@@ -10,7 +10,6 @@ const navItems = [
   { href: "/admin/players", label: "玩家管理", icon: UsersIcon },
   { href: "/admin/tournaments", label: "赛事管理", icon: TournamentIcon },
   { href: "/admin/redemptions", label: "兑奖管理", icon: RedemptionIcon },
-  { href: "/admin/stats", label: "统计", icon: StatsIcon },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

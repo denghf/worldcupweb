@@ -14,6 +14,8 @@ interface Match {
   awayScore: number | null;
   halfHomeScore: number | null;
   halfAwayScore: number | null;
+  finalHomeScore: number | null;
+  finalAwayScore: number | null;
   tournamentName: string;
   odds: {
     x1x: Record<string, number>;
@@ -67,6 +69,23 @@ const STATUS_LABELS: Record<string, string> = {
   LIVE: "进行中",
   FINISHED: "已结束",
 };
+
+function getMatchDisplayStatus(match: Match) {
+  const now = Date.now();
+  const kickoff = new Date(match.kickoffTime).getTime();
+  const hasStarted = now >= kickoff;
+
+  if (match.status === "FINISHED") {
+    return { label: STATUS_LABELS.FINISHED, isFinished: true, isLive: false, isSealed: true };
+  }
+  if (match.status === "LIVE" || (match.status === "UPCOMING" && hasStarted)) {
+    return { label: STATUS_LABELS.LIVE, isFinished: false, isLive: true, isSealed: true };
+  }
+  if (match.status === "SEALED") {
+    return { label: STATUS_LABELS.SEALED, isFinished: false, isLive: false, isSealed: true };
+  }
+  return { label: STATUS_LABELS.UPCOMING, isFinished: false, isLive: false, isSealed: false };
+}
 
 const TEAM_MARKS: Record<string, string> = {
   墨西哥: "🇲🇽",
@@ -249,9 +268,7 @@ function MatchCard({
   onOpenDetail: () => void;
 }) {
   const timeStr = beijingTimeFormatter.format(new Date(match.kickoffTime));
-  const isFinished = match.status === "FINISHED";
-  const isLive = match.status === "LIVE";
-  const isSealed = match.status === "SEALED" || isFinished;
+  const { label: statusLabel, isFinished, isLive, isSealed } = getMatchDisplayStatus(match);
 
   const x1x = match.odds?.x1x || {};
 
@@ -274,10 +291,10 @@ function MatchCard({
                     ? "bg-accent/10 text-accent"
                     : isSealed
                       ? "bg-text-primary/5 text-text-secondary"
-                      : "bg-red/10 text-accent"
+                      : "bg-[rgba(22,119,255,0.12)] text-[#1677ff]"
               }`}
             >
-              {STATUS_LABELS[match.status] ?? match.status}
+              {statusLabel}
             </span>
             <span className="rounded-full bg-bg-surface px-2 py-0.5 font-semibold text-text-muted">详情</span>
           </div>
@@ -287,10 +304,10 @@ function MatchCard({
           <TeamBlock align="left" name={match.homeTeam} logo={match.homeTeamLogo} />
           <div className="min-w-13 text-center">
             {isFinished && match.homeScore !== null ? (
-              <div className="rounded-xl bg-text-primary px-2 py-1 text-white">
-                <span className="num text-lg font-black">{match.homeScore}</span>
-                <span className="mx-1 text-xs opacity-60">-</span>
-                <span className="num text-lg font-black">{match.awayScore}</span>
+              <div className="px-3 py-1.5">
+                <span className="num text-2xl font-black text-text-primary">{match.finalHomeScore ?? match.homeScore}</span>
+                <span className="mx-1.5 text-lg font-bold text-text-muted">:</span>
+                <span className="num text-2xl font-black text-text-primary">{match.finalAwayScore ?? match.awayScore}</span>
               </div>
             ) : (
               <div className="rounded-full border border-border bg-bg-surface px-3 py-1 text-[11px] font-black text-text-muted">VS</div>
@@ -299,11 +316,28 @@ function MatchCard({
           <TeamBlock align="right" name={match.awayTeam} logo={match.awayTeamLogo} />
         </div>
 
-        <div className="grid grid-cols-3 gap-1.5">
-          <OddsBox label="胜" value={x1x.home} />
-          <OddsBox label="平" value={x1x.draw} />
-          <OddsBox label="负" value={x1x.away} />
-        </div>
+        {isFinished && match.homeScore !== null ? (
+          <div className="flex items-center justify-between rounded-xl bg-bg-surface px-3 py-2 text-xs">
+            <div className="flex items-center gap-1.5">
+              <span className="font-semibold text-text-muted">半场</span>
+              <span className="num font-bold text-text-primary">
+                {match.halfHomeScore ?? "-"}:{match.halfAwayScore ?? "-"}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="font-semibold text-text-muted">全场</span>
+              <span className="num font-bold text-text-primary">
+                {match.homeScore}:{match.awayScore}
+              </span>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-3 gap-1.5">
+            <OddsBox label="胜" value={x1x.home} />
+            <OddsBox label="平" value={x1x.draw} />
+            <OddsBox label="负" value={x1x.away} />
+          </div>
+        )}
       </button>
     </article>
   );
@@ -380,14 +414,15 @@ function isWinningOption(
 function MatchOddsDrawer({ match, onClose }: { match: Match; onClose: () => void }) {
   const [selectedOdds, setSelectedOdds] = useState<Set<string>>(() => new Set());
   const timeStr = beijingTimeFormatter.format(new Date(match.kickoffTime));
-  const isFinished = match.status === "FINISHED";
+  const { label: statusLabel, isFinished, isLive } = getMatchDisplayStatus(match);
+  const canSelect = !isFinished && !isLive;
   const x1x = match.odds?.x1x || {};
   const handicapX1x = match.odds?.handicapX1x || {};
   const halfFull = match.odds?.halfFull || [];
   const totalGoals = match.odds?.totalGoals || [];
   const correctScore = match.odds?.correctScore || [];
   const toggleOdd = (key: string) => {
-    if (isFinished) return;
+    if (!canSelect) return;
     setSelectedOdds((current) => {
       const next = new Set(current);
       if (next.has(key)) {
@@ -413,7 +448,7 @@ function MatchOddsDrawer({ match, onClose }: { match: Match; onClose: () => void
               <div className="text-[10px] font-semibold text-accent">ODDS DETAIL</div>
               <div className="flex flex-wrap items-center gap-1.5">
                 <h2 className="text-base font-black text-text-primary">赔率详情</h2>
-                {!isFinished && (
+                {canSelect && (
                   <>
                     <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${selectedOdds.size > 0 ? "bg-accent text-white" : "bg-bg-surface text-text-muted"}`}>已选 {selectedOdds.size}</span>
                     <span className="rounded-full bg-bg-surface px-2 py-0.5 text-[10px] font-semibold text-text-secondary">
@@ -421,13 +456,13 @@ function MatchOddsDrawer({ match, onClose }: { match: Match; onClose: () => void
                     </span>
                   </>
                 )}
-                {isFinished && (
+                {!canSelect && (
                   <span className="rounded-full bg-red/10 px-2 py-0.5 text-[10px] font-semibold text-red">红色勾选为命中选项</span>
                 )}
               </div>
             </div>
             <div className="flex items-center gap-1.5">
-              {!isFinished && selectedOdds.size > 0 && (
+              {canSelect && selectedOdds.size > 0 && (
                 <button
                   type="button"
                   onClick={() => setSelectedOdds(new Set())}
@@ -461,15 +496,22 @@ function MatchOddsDrawer({ match, onClose }: { match: Match; onClose: () => void
               <TeamBlock align="left" name={match.homeTeam} logo={match.homeTeamLogo} compact />
               <div className="min-w-14 text-center">
                 {isFinished && match.homeScore !== null ? (
-                  <div className="rounded-lg bg-text-primary px-2 py-1 text-white">
-                    <span className="num text-lg font-black">{match.homeScore}</span>
-                    <span className="mx-1 text-xs opacity-60">-</span>
-                    <span className="num text-lg font-black">{match.awayScore}</span>
+                  <div className="px-3 py-1.5">
+                    <span className="num text-2xl font-black text-text-primary">{match.finalHomeScore ?? match.homeScore}</span>
+                    <span className="mx-1.5 text-lg font-bold text-text-muted">:</span>
+                    <span className="num text-2xl font-black text-text-primary">{match.finalAwayScore ?? match.awayScore}</span>
                   </div>
                 ) : (
                   <div className="rounded-full border border-border bg-bg-surface px-3 py-1 text-[11px] font-black text-text-muted">VS</div>
                 )}
-                <div className="mt-1 text-[10px] font-semibold text-accent">{STATUS_LABELS[match.status] ?? match.status}</div>
+                <div className={`mt-1 text-[10px] font-semibold ${isFinished ? "text-text-muted" : isLive ? "text-accent" : "text-[#1677ff]"}`}>{statusLabel}</div>
+                {isFinished && match.homeScore !== null && (
+                  <div className="mt-1 text-[10px] text-text-muted">
+                    <span className="num">半场 {match.halfHomeScore ?? "-"}:{match.halfAwayScore ?? "-"}</span>
+                    <span className="mx-1">·</span>
+                    <span className="num">90分钟 {match.homeScore}:{match.awayScore}</span>
+                  </div>
+                )}
               </div>
               <TeamBlock align="right" name={match.awayTeam} logo={match.awayTeamLogo} compact />
             </div>
@@ -478,19 +520,19 @@ function MatchOddsDrawer({ match, onClose }: { match: Match; onClose: () => void
           <div className="space-y-1.5">
             <MarketGrid title="胜平负" columns="grid-cols-3">
               <ExpandedOddsCell label="胜" value={x1x.home} dense
-                selected={!isFinished && selectedOdds.has("X1X:home")}
+                selected={canSelect && selectedOdds.has("X1X:home")}
                 isWinner={isFinished && hasScores && isWinningOption("X1X", "home", match.homeScore!, match.awayScore!, match.halfHomeScore, match.halfAwayScore)}
-                onToggle={isFinished ? undefined : () => toggleOdd("X1X:home")}
+                onToggle={canSelect ? () => toggleOdd("X1X:home") : undefined}
               />
               <ExpandedOddsCell label="平" value={x1x.draw} dense
-                selected={!isFinished && selectedOdds.has("X1X:draw")}
+                selected={canSelect && selectedOdds.has("X1X:draw")}
                 isWinner={isFinished && hasScores && isWinningOption("X1X", "draw", match.homeScore!, match.awayScore!, match.halfHomeScore, match.halfAwayScore)}
-                onToggle={isFinished ? undefined : () => toggleOdd("X1X:draw")}
+                onToggle={canSelect ? () => toggleOdd("X1X:draw") : undefined}
               />
               <ExpandedOddsCell label="负" value={x1x.away} dense
-                selected={!isFinished && selectedOdds.has("X1X:away")}
+                selected={canSelect && selectedOdds.has("X1X:away")}
                 isWinner={isFinished && hasScores && isWinningOption("X1X", "away", match.homeScore!, match.awayScore!, match.halfHomeScore, match.halfAwayScore)}
-                onToggle={isFinished ? undefined : () => toggleOdd("X1X:away")}
+                onToggle={canSelect ? () => toggleOdd("X1X:away") : undefined}
               />
             </MarketGrid>
 
@@ -500,9 +542,9 @@ function MatchOddsDrawer({ match, onClose }: { match: Match; onClose: () => void
                   const selectionKey = `HANDICAP_X1X:${key}`;
                   return (
                     <ExpandedOddsCell key={key} label={formatHandicapLabel(key)} value={value} dense
-                      selected={!isFinished && selectedOdds.has(selectionKey)}
+                      selected={canSelect && selectedOdds.has(selectionKey)}
                       isWinner={isFinished && hasScores && isWinningOption("HANDICAP_X1X", key, match.homeScore!, match.awayScore!, match.halfHomeScore, match.halfAwayScore)}
-                      onToggle={isFinished ? undefined : () => toggleOdd(selectionKey)}
+                      onToggle={canSelect ? () => toggleOdd(selectionKey) : undefined}
                     />
                   );
                 })}
@@ -515,9 +557,9 @@ function MatchOddsDrawer({ match, onClose }: { match: Match; onClose: () => void
                   const selectionKey = `CORRECT_SCORE:${score.label}`;
                   return (
                     <ExpandedOddsCell key={score.label} label={score.label} value={score.value} dense
-                      selected={!isFinished && selectedOdds.has(selectionKey)}
+                      selected={canSelect && selectedOdds.has(selectionKey)}
                       isWinner={isFinished && hasScores && isWinningOption("CORRECT_SCORE", score.label, match.homeScore!, match.awayScore!, match.halfHomeScore, match.halfAwayScore)}
-                      onToggle={isFinished ? undefined : () => toggleOdd(selectionKey)}
+                      onToggle={canSelect ? () => toggleOdd(selectionKey) : undefined}
                     />
                   );
                 })}
@@ -530,9 +572,9 @@ function MatchOddsDrawer({ match, onClose }: { match: Match; onClose: () => void
                   const selectionKey = `TOTAL_GOALS:${goal.label}`;
                   return (
                     <ExpandedOddsCell key={goal.label} label={goal.label} value={goal.value} dense
-                      selected={!isFinished && selectedOdds.has(selectionKey)}
+                      selected={canSelect && selectedOdds.has(selectionKey)}
                       isWinner={isFinished && hasScores && isWinningOption("TOTAL_GOALS", goal.label, match.homeScore!, match.awayScore!, match.halfHomeScore, match.halfAwayScore)}
-                      onToggle={isFinished ? undefined : () => toggleOdd(selectionKey)}
+                      onToggle={canSelect ? () => toggleOdd(selectionKey) : undefined}
                     />
                   );
                 })}
@@ -545,10 +587,10 @@ function MatchOddsDrawer({ match, onClose }: { match: Match; onClose: () => void
                   const selectionKey = `HALF_FULL:${option.label}`;
                   return (
                     <ExpandedOddsCell key={option.label} label={option.label} value={option.value} dense
-                      selected={!isFinished && selectedOdds.has(selectionKey)}
+                      selected={canSelect && selectedOdds.has(selectionKey)}
                       isWinner={isFinished && hasScores && match.halfHomeScore !== null && match.halfAwayScore !== null &&
                         isWinningOption("HALF_FULL", option.label, match.homeScore!, match.awayScore!, match.halfHomeScore, match.halfAwayScore)}
-                      onToggle={isFinished ? undefined : () => toggleOdd(selectionKey)}
+                      onToggle={canSelect ? () => toggleOdd(selectionKey) : undefined}
                     />
                   );
                 })}

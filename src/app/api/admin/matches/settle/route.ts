@@ -21,7 +21,7 @@ export const POST = withAdmin(async (req: NextRequest) => {
     const parsedFinalAwayScore = finalAwayScore === undefined || finalAwayScore === "" ? undefined : Number(finalAwayScore);
 
     const hasHalfFullBet = await prisma.betItem.count({
-      where: { matchId: Number(matchId), betMarket: "HALF_FULL", result: "PENDING" },
+      where: { matchId: Number(matchId), betMarket: "HALF_FULL" },
     });
     if (hasHalfFullBet > 0 && (parsedHalfHomeScore === undefined || parsedHalfAwayScore === undefined)) {
       return apiError("该比赛有半全场下注，结算时需要填写半场比分");
@@ -40,7 +40,6 @@ export const POST = withAdmin(async (req: NextRequest) => {
     return apiSuccess({ message: "结算完成" });
   } catch (e) {
     console.error("Settle match error:", e);
-    console.error("Settle match error:", e);
     return apiError("结算失败", 500);
   }
 });
@@ -55,6 +54,7 @@ async function settleMatch(
   finalAwayScore?: number
 ) {
   await prisma.$transaction(async (tx) => {
+    // 1. 更新比赛比分
     await tx.match.update({
       where: { id: matchId },
       data: {
@@ -68,12 +68,62 @@ async function settleMatch(
       },
     });
 
-    const betItems = await tx.betItem.findMany({
-      where: { matchId, result: "PENDING" },
+    // 2. 找到该比赛的所有 bet items
+    const allBetItems = await tx.betItem.findMany({
+      where: { matchId },
       include: { bet: true },
     });
 
-    for (const item of betItems) {
+    const affectedBetIds = [...new Set(allBetItems.map((i) => i.betId))];
+    const affectedUserIds = new Set<number>();
+
+    // 3. 回退已结算的下注（WON/LOST → APPROVED）
+    const settledBets = await tx.bet.findMany({
+      where: { id: { in: affectedBetIds }, status: { in: ["WON", "LOST"] } },
+      include: { items: true },
+    });
+
+    for (const bet of settledBets) {
+      if (bet.status === "WON") {
+        const payout = Number(bet.actualPayout);
+        const wallet = await tx.wallet.findUnique({ where: { userId: bet.userId } });
+        const newBalance = Number(wallet!.balance) - payout;
+
+        await tx.wallet.update({
+          where: { userId: bet.userId },
+          data: { balance: newBalance },
+        });
+
+        await tx.transaction.create({
+          data: {
+            userId: bet.userId,
+            type: "ADJUST",
+            amount: -payout,
+            balanceAfter: newBalance,
+            relatedBetId: bet.id,
+            remark: "结算修正回退",
+          },
+        });
+      }
+
+      await tx.bet.update({
+        where: { id: bet.id },
+        data: { status: "APPROVED", actualPayout: 0, settledAt: null },
+      });
+
+      affectedUserIds.add(bet.userId);
+    }
+
+    // 4. 重置所有该比赛的 bet items 为 PENDING
+    for (const item of allBetItems) {
+      await tx.betItem.update({
+        where: { id: item.id },
+        data: { result: "PENDING", settledAt: null },
+      });
+    }
+
+    // 5. 重新评估所有 items
+    for (const item of allBetItems) {
       const won = evaluateBetSelection({
         market: item.betMarket,
         selectedOption: item.selectedOption,
@@ -89,9 +139,10 @@ async function settleMatch(
       });
     }
 
+    // 6. 重新结算受影响的下注
     const affectedBets = await tx.bet.findMany({
       where: {
-        items: { some: { matchId } },
+        id: { in: affectedBetIds },
         status: { in: ["APPROVED", "ACTIVE"] },
       },
       include: { items: true },
@@ -146,7 +197,12 @@ async function settleMatch(
         });
       }
 
-      await updateUserStats(tx, bet.userId);
+      affectedUserIds.add(bet.userId);
+    }
+
+    // 7. 更新所有受影响用户的统计
+    for (const userId of affectedUserIds) {
+      await updateUserStats(tx, userId);
     }
   });
 }

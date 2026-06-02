@@ -24,6 +24,8 @@ interface Match {
   status: string;
   homeScore: number | null;
   awayScore: number | null;
+  halfHomeScore: number | null;
+  halfAwayScore: number | null;
   finalHomeScore: number | null;
   finalAwayScore: number | null;
   odds: {
@@ -412,20 +414,31 @@ export default function AdminTournamentsPage() {
                                 )}
                               </div>
                               <div className="flex items-center gap-1.5 ml-2 shrink-0">
-                                <button
-                                  onClick={() => openOddsModal(m)}
-                                  className="text-[10px] px-2 py-1 rounded bg-bg-elevated text-text-secondary hover:text-text-primary transition-colors"
-                                >
-                                  {hasOdds ? "编辑赔率" : "设置赔率"}
-                                </button>
                                 {!isFinished && (
                                   <button
-                                    onClick={() => { setSettleMatchData(m); setShowSettle(true); }}
-                                    className="text-[10px] px-2 py-1 rounded bg-gold/10 text-gold hover:bg-gold/20 transition-colors"
+                                    onClick={() => openOddsModal(m)}
+                                    className="text-[10px] px-2 py-1 rounded bg-bg-elevated text-text-secondary hover:text-text-primary transition-colors"
                                   >
-                                    结算
+                                    {hasOdds ? "编辑赔率" : "设置赔率"}
                                   </button>
                                 )}
+                                <button
+                                  onClick={() => {
+                                    setSettleMatchData(m);
+                                    setSettleForm({
+                                      homeScore: m.homeScore?.toString() ?? "",
+                                      awayScore: m.awayScore?.toString() ?? "",
+                                      halfHomeScore: m.halfHomeScore?.toString() ?? "",
+                                      halfAwayScore: m.halfAwayScore?.toString() ?? "",
+                                      finalHomeScore: m.finalHomeScore?.toString() ?? "",
+                                      finalAwayScore: m.finalAwayScore?.toString() ?? "",
+                                    });
+                                    setShowSettle(true);
+                                  }}
+                                  className="text-[10px] px-2 py-1 rounded bg-gold/10 text-gold hover:bg-gold/20 transition-colors"
+                                >
+                                  {isFinished ? "修改结算" : "结算"}
+                                </button>
                               </div>
                             </div>
                           );
@@ -642,7 +655,7 @@ export default function AdminTournamentsPage() {
 
       {/* Settle Modal */}
       {showSettle && settleMatchData && (
-        <Modal onClose={() => setShowSettle(false)} title={`结算 · ${settleMatchData.homeTeam} vs ${settleMatchData.awayTeam}`}>
+        <Modal onClose={() => setShowSettle(false)} title={`${settleMatchData.status === "FINISHED" ? "修改结算" : "结算"} · ${settleMatchData.homeTeam} vs ${settleMatchData.awayTeam}`}>
           <div className="space-y-3">
             <div>
               <div className="mb-2 text-xs font-semibold text-text-secondary">半场比分</div>

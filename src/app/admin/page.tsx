@@ -53,10 +53,9 @@ export default function AdminDashboard() {
         <StatCard label="总下注额" value={`¥${Math.round(stats.totalBetAmount).toLocaleString()}`} />
         <StatCard label="总赔付" value={`¥${Math.round(stats.totalPayout).toLocaleString()}`} color="accent" />
         <StatCard
-          label="待审核"
-          value={String(stats.pendingReviewCount)}
-          color={stats.pendingReviewCount > 0 ? "gold" : undefined}
-          pulse={stats.pendingReviewCount > 0}
+          label="平台盈利"
+          value={`¥${Math.round(stats.netProfit).toLocaleString()}`}
+          color={stats.netProfit >= 0 ? "accent" : "red"}
         />
         <StatCard label="总用户" value={String(stats.totalUsers)} />
       </div>
@@ -117,7 +116,7 @@ function StatCard({
 }: {
   label: string;
   value: string;
-  color?: "accent" | "gold";
+  color?: "accent" | "gold" | "red";
   pulse?: boolean;
 }) {
   return (
@@ -128,7 +127,7 @@ function StatCard({
       <div className="text-text-muted text-xs mb-1">{label}</div>
       <div
         className={`num text-xl font-bold ${
-          color === "accent" ? "text-accent" : color === "gold" ? "text-gold" : "text-text-primary"
+          color === "accent" ? "text-accent" : color === "gold" ? "text-gold" : color === "red" ? "text-red" : "text-text-primary"
         }`}
       >
         {value}
