@@ -78,8 +78,12 @@ model Match {
   awayTeamLogo  String?   @db.VarChar(500)
   kickoffTime   DateTime
   status        MatchStatus @default(UPCOMING)
-  homeScore     Int?
-  awayScore     Int?
+  homeScore      Int?
+  awayScore      Int?
+  halfHomeScore  Int?
+  halfAwayScore  Int?
+  finalHomeScore Int?
+  finalAwayScore Int?
   oddsUpdatedAt DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt

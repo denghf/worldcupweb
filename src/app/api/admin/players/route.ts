@@ -12,7 +12,6 @@ export const GET = withAdmin(async () => {
       role: true,
       status: true,
       createdAt: true,
-      wallet: { select: { balance: true } },
       stats: { select: { totalBets: true, netProfit: true } },
     },
     orderBy: { createdAt: "desc" },
@@ -21,7 +20,6 @@ export const GET = withAdmin(async () => {
   return apiSuccess(
     users.map((u) => ({
       ...u,
-      balance: Number(u.wallet?.balance ?? 0),
       totalBets: u.stats?.totalBets ?? 0,
       netProfit: Number(u.stats?.netProfit ?? 0),
     }))
@@ -63,7 +61,7 @@ export const POST = withAdmin(async (req: NextRequest) => {
 
 export const PATCH = withAdmin(async (req: NextRequest) => {
   try {
-    const { userId, status, balanceDelta, remark } = await req.json();
+    const { userId, status, nickname } = await req.json();
 
     if (!userId) return apiError("玩家ID必填");
 
@@ -75,35 +73,46 @@ export const PATCH = withAdmin(async (req: NextRequest) => {
       return apiSuccess({ message: "状态已更新" });
     }
 
-    if (balanceDelta) {
-      const wallet = await prisma.wallet.findUnique({ where: { userId } });
-      if (!wallet) return apiError("钱包不存在");
-
-      const newBalance = Number(wallet.balance) + balanceDelta;
-      if (newBalance < 0) return apiError("余额不能为负数");
-
-      await prisma.$transaction(async (tx) => {
-        await tx.wallet.update({
-          where: { userId },
-          data: { balance: newBalance },
-        });
-        await tx.transaction.create({
-          data: {
-            userId,
-            type: balanceDelta > 0 ? "RECHARGE" : "ADJUST",
-            amount: balanceDelta,
-            balanceAfter: newBalance,
-            remark: remark || `[管理员操作] ${balanceDelta > 0 ? "充值" : "扣减"}`,
-          },
-        });
+    if (nickname !== undefined) {
+      if (!nickname.trim()) return apiError("昵称不能为空");
+      await prisma.user.update({
+        where: { id: userId },
+        data: { nickname: nickname.trim() },
       });
-
-      return apiSuccess({ newBalance });
+      return apiSuccess({ message: "昵称已更新" });
     }
 
     return apiError("无有效操作");
   } catch (e) {
     console.error("Update player error:", e);
     return apiError("操作失败", 500);
+  }
+});
+
+export const DELETE = withAdmin(async (req: NextRequest) => {
+  try {
+    const { userId } = await req.json();
+    if (!userId) return apiError("玩家ID必填");
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return apiError("玩家不存在");
+
+    await prisma.$transaction(async (tx) => {
+      await tx.transaction.deleteMany({ where: { userId } });
+      const bets = await tx.bet.findMany({
+        where: { userId },
+        select: { id: true },
+      });
+      if (bets.length > 0) {
+        await tx.betItem.deleteMany({ where: { betId: { in: bets.map((b) => b.id) } } });
+        await tx.bet.deleteMany({ where: { userId } });
+      }
+      await tx.user.delete({ where: { id: userId } });
+    });
+
+    return apiSuccess({ message: "玩家已删除" });
+  } catch (e) {
+    console.error("Delete player error:", e);
+    return apiError("删除失败", 500);
   }
 });

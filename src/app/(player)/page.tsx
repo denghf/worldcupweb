@@ -12,6 +12,8 @@ interface Match {
   status: string;
   homeScore: number | null;
   awayScore: number | null;
+  halfHomeScore: number | null;
+  halfAwayScore: number | null;
   tournamentName: string;
   odds: {
     x1x: Record<string, number>;
@@ -307,6 +309,74 @@ function MatchCard({
   );
 }
 
+const exactHomeScores = new Set(["1:0", "2:0", "2:1", "3:0", "3:1", "3:2", "4:0", "4:1", "4:2", "5:0", "5:1", "5:2"]);
+const exactDrawScores = new Set(["0:0", "1:1", "2:2", "3:3"]);
+const exactAwayScores = new Set(["0:1", "0:2", "1:2", "0:3", "1:3", "2:3", "0:4", "1:4", "2:4", "0:5", "1:5", "2:5"]);
+
+function matchResult(homeScore: number, awayScore: number) {
+  if (homeScore > awayScore) return "home";
+  if (homeScore < awayScore) return "away";
+  return "draw";
+}
+
+function resultText(homeScore: number, awayScore: number) {
+  if (homeScore > awayScore) return "胜";
+  if (homeScore < awayScore) return "负";
+  return "平";
+}
+
+function isWinningOption(
+  market: string,
+  optionKey: string,
+  homeScore: number,
+  awayScore: number,
+  halfHomeScore: number | null,
+  halfAwayScore: number | null
+): boolean {
+  switch (market) {
+    case "X1X":
+      return optionKey === matchResult(homeScore, awayScore);
+    case "HANDICAP_X1X": {
+      const [handicapRaw, option] = optionKey.includes(":")
+        ? optionKey.split(":")
+        : ["0", optionKey];
+      const handicap = Number(handicapRaw);
+      if (Number.isNaN(handicap)) return false;
+      return option === matchResult(homeScore + handicap, awayScore);
+    }
+    case "HALF_FULL": {
+      if (halfHomeScore === null || halfAwayScore === null) return false;
+      return optionKey === `${resultText(halfHomeScore, halfAwayScore)}${resultText(homeScore, awayScore)}`;
+    }
+    case "TOTAL_GOALS": {
+      const total = homeScore + awayScore;
+      if (optionKey.endsWith("+")) {
+        const minimum = Number.parseInt(optionKey, 10);
+        return !Number.isNaN(minimum) && total >= minimum;
+      }
+      if (optionKey.endsWith("球+")) {
+        const minimum = Number.parseInt(optionKey, 10);
+        return !Number.isNaN(minimum) && total >= minimum;
+      }
+      const exact = Number.parseInt(optionKey, 10);
+      return !Number.isNaN(exact) && total === exact;
+    }
+    case "CORRECT_SCORE": {
+      if (optionKey.includes(":")) {
+        const [home, away] = optionKey.split(":").map(Number);
+        return home === homeScore && away === awayScore;
+      }
+      const score = `${homeScore}:${awayScore}`;
+      if (optionKey === "胜其它") return homeScore > awayScore && !exactHomeScores.has(score);
+      if (optionKey === "平其它") return homeScore === awayScore && !exactDrawScores.has(score);
+      if (optionKey === "负其它") return homeScore < awayScore && !exactAwayScores.has(score);
+      return false;
+    }
+    default:
+      return false;
+  }
+}
+
 function MatchOddsDrawer({ match, onClose }: { match: Match; onClose: () => void }) {
   const [selectedOdds, setSelectedOdds] = useState<Set<string>>(() => new Set());
   const timeStr = beijingTimeFormatter.format(new Date(match.kickoffTime));
@@ -317,6 +387,7 @@ function MatchOddsDrawer({ match, onClose }: { match: Match; onClose: () => void
   const totalGoals = match.odds?.totalGoals || [];
   const correctScore = match.odds?.correctScore || [];
   const toggleOdd = (key: string) => {
+    if (isFinished) return;
     setSelectedOdds((current) => {
       const next = new Set(current);
       if (next.has(key)) {
@@ -327,6 +398,8 @@ function MatchOddsDrawer({ match, onClose }: { match: Match; onClose: () => void
       return next;
     });
   };
+
+  const hasScores = match.homeScore !== null && match.awayScore !== null;
 
   return (
     <div className="fixed inset-0 z-50 modal-overlay animate-fade-in" onClick={onClose}>
@@ -340,14 +413,21 @@ function MatchOddsDrawer({ match, onClose }: { match: Match; onClose: () => void
               <div className="text-[10px] font-semibold text-accent">ODDS DETAIL</div>
               <div className="flex flex-wrap items-center gap-1.5">
                 <h2 className="text-base font-black text-text-primary">赔率详情</h2>
-                <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${selectedOdds.size > 0 ? "bg-accent text-white" : "bg-bg-surface text-text-muted"}`}>已选 {selectedOdds.size}</span>
-                <span className="rounded-full bg-bg-surface px-2 py-0.5 text-[10px] font-semibold text-text-secondary">
-                  {selectedOdds.size > 0 ? "红色为已选，可截图给管理员" : "点击赔率多选后截图"}
-                </span>
+                {!isFinished && (
+                  <>
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${selectedOdds.size > 0 ? "bg-accent text-white" : "bg-bg-surface text-text-muted"}`}>已选 {selectedOdds.size}</span>
+                    <span className="rounded-full bg-bg-surface px-2 py-0.5 text-[10px] font-semibold text-text-secondary">
+                      {selectedOdds.size > 0 ? "红色为已选，可截图给管理员" : "点击赔率多选后截图"}
+                    </span>
+                  </>
+                )}
+                {isFinished && (
+                  <span className="rounded-full bg-red/10 px-2 py-0.5 text-[10px] font-semibold text-red">红色勾选为命中选项</span>
+                )}
               </div>
             </div>
             <div className="flex items-center gap-1.5">
-              {selectedOdds.size > 0 && (
+              {!isFinished && selectedOdds.size > 0 && (
                 <button
                   type="button"
                   onClick={() => setSelectedOdds(new Set())}
@@ -397,9 +477,21 @@ function MatchOddsDrawer({ match, onClose }: { match: Match; onClose: () => void
 
           <div className="space-y-1.5">
             <MarketGrid title="胜平负" columns="grid-cols-3">
-              <ExpandedOddsCell label="胜" value={x1x.home} dense selected={selectedOdds.has("X1X:home")} onToggle={() => toggleOdd("X1X:home")} />
-              <ExpandedOddsCell label="平" value={x1x.draw} dense selected={selectedOdds.has("X1X:draw")} onToggle={() => toggleOdd("X1X:draw")} />
-              <ExpandedOddsCell label="负" value={x1x.away} dense selected={selectedOdds.has("X1X:away")} onToggle={() => toggleOdd("X1X:away")} />
+              <ExpandedOddsCell label="胜" value={x1x.home} dense
+                selected={!isFinished && selectedOdds.has("X1X:home")}
+                isWinner={isFinished && hasScores && isWinningOption("X1X", "home", match.homeScore!, match.awayScore!, match.halfHomeScore, match.halfAwayScore)}
+                onToggle={isFinished ? undefined : () => toggleOdd("X1X:home")}
+              />
+              <ExpandedOddsCell label="平" value={x1x.draw} dense
+                selected={!isFinished && selectedOdds.has("X1X:draw")}
+                isWinner={isFinished && hasScores && isWinningOption("X1X", "draw", match.homeScore!, match.awayScore!, match.halfHomeScore, match.halfAwayScore)}
+                onToggle={isFinished ? undefined : () => toggleOdd("X1X:draw")}
+              />
+              <ExpandedOddsCell label="负" value={x1x.away} dense
+                selected={!isFinished && selectedOdds.has("X1X:away")}
+                isWinner={isFinished && hasScores && isWinningOption("X1X", "away", match.homeScore!, match.awayScore!, match.halfHomeScore, match.halfAwayScore)}
+                onToggle={isFinished ? undefined : () => toggleOdd("X1X:away")}
+              />
             </MarketGrid>
 
             {Object.keys(handicapX1x).length > 0 && (
@@ -407,7 +499,11 @@ function MatchOddsDrawer({ match, onClose }: { match: Match; onClose: () => void
                 {Object.entries(handicapX1x).map(([key, value]) => {
                   const selectionKey = `HANDICAP_X1X:${key}`;
                   return (
-                    <ExpandedOddsCell key={key} label={formatHandicapLabel(key)} value={value} dense selected={selectedOdds.has(selectionKey)} onToggle={() => toggleOdd(selectionKey)} />
+                    <ExpandedOddsCell key={key} label={formatHandicapLabel(key)} value={value} dense
+                      selected={!isFinished && selectedOdds.has(selectionKey)}
+                      isWinner={isFinished && hasScores && isWinningOption("HANDICAP_X1X", key, match.homeScore!, match.awayScore!, match.halfHomeScore, match.halfAwayScore)}
+                      onToggle={isFinished ? undefined : () => toggleOdd(selectionKey)}
+                    />
                   );
                 })}
               </MarketGrid>
@@ -418,7 +514,11 @@ function MatchOddsDrawer({ match, onClose }: { match: Match; onClose: () => void
                 {correctScore.map((score) => {
                   const selectionKey = `CORRECT_SCORE:${score.label}`;
                   return (
-                    <ExpandedOddsCell key={score.label} label={score.label} value={score.value} dense selected={selectedOdds.has(selectionKey)} onToggle={() => toggleOdd(selectionKey)} />
+                    <ExpandedOddsCell key={score.label} label={score.label} value={score.value} dense
+                      selected={!isFinished && selectedOdds.has(selectionKey)}
+                      isWinner={isFinished && hasScores && isWinningOption("CORRECT_SCORE", score.label, match.homeScore!, match.awayScore!, match.halfHomeScore, match.halfAwayScore)}
+                      onToggle={isFinished ? undefined : () => toggleOdd(selectionKey)}
+                    />
                   );
                 })}
               </MarketGrid>
@@ -429,7 +529,11 @@ function MatchOddsDrawer({ match, onClose }: { match: Match; onClose: () => void
                 {totalGoals.map((goal) => {
                   const selectionKey = `TOTAL_GOALS:${goal.label}`;
                   return (
-                    <ExpandedOddsCell key={goal.label} label={goal.label} value={goal.value} dense selected={selectedOdds.has(selectionKey)} onToggle={() => toggleOdd(selectionKey)} />
+                    <ExpandedOddsCell key={goal.label} label={goal.label} value={goal.value} dense
+                      selected={!isFinished && selectedOdds.has(selectionKey)}
+                      isWinner={isFinished && hasScores && isWinningOption("TOTAL_GOALS", goal.label, match.homeScore!, match.awayScore!, match.halfHomeScore, match.halfAwayScore)}
+                      onToggle={isFinished ? undefined : () => toggleOdd(selectionKey)}
+                    />
                   );
                 })}
               </MarketGrid>
@@ -440,7 +544,12 @@ function MatchOddsDrawer({ match, onClose }: { match: Match; onClose: () => void
                 {halfFull.map((option) => {
                   const selectionKey = `HALF_FULL:${option.label}`;
                   return (
-                    <ExpandedOddsCell key={option.label} label={option.label} value={option.value} dense selected={selectedOdds.has(selectionKey)} onToggle={() => toggleOdd(selectionKey)} />
+                    <ExpandedOddsCell key={option.label} label={option.label} value={option.value} dense
+                      selected={!isFinished && selectedOdds.has(selectionKey)}
+                      isWinner={isFinished && hasScores && match.halfHomeScore !== null && match.halfAwayScore !== null &&
+                        isWinningOption("HALF_FULL", option.label, match.homeScore!, match.awayScore!, match.halfHomeScore, match.halfAwayScore)}
+                      onToggle={isFinished ? undefined : () => toggleOdd(selectionKey)}
+                    />
                   );
                 })}
               </MarketGrid>
@@ -481,21 +590,23 @@ function ExpandedOddsCell({
   value,
   dense = false,
   selected = false,
+  isWinner = false,
   onToggle,
 }: {
   label: string;
   value?: number;
   dense?: boolean;
   selected?: boolean;
+  isWinner?: boolean;
   onToggle?: () => void;
 }) {
   const content = (
     <>
-      <span className={`text-[10px] font-semibold leading-none ${selected ? "text-white" : "text-text-primary"}`}>{label}</span>
-      <span className={`num mt-0.5 text-[10px] leading-none ${selected ? "text-white/90" : "text-text-secondary"}`}>{value?.toFixed(2) ?? "-"}</span>
+      <span className={`text-[10px] font-semibold leading-none ${isWinner || selected ? "text-white" : "text-text-primary"}`}>{label}</span>
+      <span className={`num mt-0.5 text-[10px] leading-none ${isWinner || selected ? "text-white/90" : "text-text-secondary"}`}>{value?.toFixed(2) ?? "-"}</span>
     </>
   );
-  const className = `expanded-odds-cell relative flex flex-col items-center justify-center border-r border-b px-0.5 text-center first:rounded-tl-[5px] ${dense ? "h-8 py-0.5" : "min-h-10 py-1"} ${selected ? "selected border-accent" : "border-border/70"}`;
+  const className = `expanded-odds-cell relative flex flex-col items-center justify-center border-r border-b px-0.5 text-center first:rounded-tl-[5px] ${dense ? "h-8 py-0.5" : "min-h-10 py-1"} ${isWinner || selected ? "selected border-accent" : "border-border/70"}`;
 
   if (!onToggle) {
     return <div className={className}>{content}</div>;

@@ -63,6 +63,10 @@ export async function GET(req: NextRequest) {
       status: m.status,
       homeScore: m.homeScore,
       awayScore: m.awayScore,
+      halfHomeScore: m.halfHomeScore,
+      halfAwayScore: m.halfAwayScore,
+      finalHomeScore: m.finalHomeScore,
+      finalAwayScore: m.finalAwayScore,
       tournamentName: m.tournament.name,
       odds: transformOdds(m.odds),
     }));

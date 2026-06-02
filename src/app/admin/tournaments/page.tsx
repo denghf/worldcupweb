@@ -24,35 +24,26 @@ interface Match {
   status: string;
   homeScore: number | null;
   awayScore: number | null;
+  finalHomeScore: number | null;
+  finalAwayScore: number | null;
   odds: {
     x1x: Record<string, number>;
+    handicapX1x: Record<string, number>;
+    halfFull: { label: string; value: number }[];
     totalGoals: { label: string; value: number }[];
     correctScore: { label: string; value: number }[];
   };
 }
 
-interface ApiFixture {
-  fixtureId: number;
-  date: string;
-  status: string;
+interface LocalMatch {
+  apiMatchId: string;
+  matchNo?: string;
   homeTeam: string;
   awayTeam: string;
-  homeTeamLogo: string;
-  awayTeamLogo: string;
+  kickoffTime: string;
+  handicap?: number;
+  odds: { betType: string; optionKey: string; oddsValue: number }[];
 }
-
-const POPULAR_LEAGUES = [
-  { id: 1, name: "World Cup", season: "2026" },
-  { id: 39, name: "Premier League (England)", season: "2024" },
-  { id: 140, name: "La Liga (Spain)", season: "2024" },
-  { id: 135, name: "Serie A (Italy)", season: "2024" },
-  { id: 78, name: "Bundesliga (Germany)", season: "2024" },
-  { id: 61, name: "Ligue 1 (France)", season: "2024" },
-  { id: 2, name: "Champions League", season: "2024" },
-  { id: 4, name: "Euro Championship", season: "2024" },
-  { id: 71, name: "Serie A (Brazil)", season: "2026" },
-  { id: 88, name: "Eredivisie (Netherlands)", season: "2024" },
-];
 
 export default function AdminTournamentsPage() {
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
@@ -89,16 +80,13 @@ export default function AdminTournamentsPage() {
   // Settle modal
   const [showSettle, setShowSettle] = useState(false);
   const [settleMatchData, setSettleMatchData] = useState<Match | null>(null);
-  const [settleForm, setSettleForm] = useState({ homeScore: "", awayScore: "", halfHomeScore: "", halfAwayScore: "" });
+  const [settleForm, setSettleForm] = useState({ homeScore: "", awayScore: "", halfHomeScore: "", halfAwayScore: "", finalHomeScore: "", finalAwayScore: "" });
 
-  // Import from API
+  // Local import
   const [showImport, setShowImport] = useState(false);
-  const [importLeagueId, setImportLeagueId] = useState("");
-  const [importSeason, setImportSeason] = useState("");
-  const [importDate, setImportDate] = useState("");
-  const [importPreview, setImportPreview] = useState<ApiFixture[]>([]);
+  const [importJson, setImportJson] = useState("");
   const [importLoading, setImportLoading] = useState(false);
-  const [importingIds, setImportingIds] = useState<Set<number>>(new Set());
+  const [importResult, setImportResult] = useState<string>("");
 
   useEffect(() => {
     loadData();
@@ -121,21 +109,33 @@ export default function AdminTournamentsPage() {
       .filter((m) => m.tournamentId === tournamentId)
       .sort((a, b) => new Date(a.kickoffTime).getTime() - new Date(b.kickoffTime).getTime());
 
-  const handlePreviewImport = async () => {
-    if (!importLeagueId || !importSeason) return;
-    setImportLoading(true);
+  const handleLocalImport = async () => {
+    if (!selectedTournamentId || !importJson.trim()) return;
+    let parsed: LocalMatch[];
     try {
-      const params = new URLSearchParams({
-        leagueId: importLeagueId,
-        season: importSeason,
+      parsed = JSON.parse(importJson);
+    } catch {
+      alert("JSON 格式错误，请检查输入");
+      return;
+    }
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      alert("数据必须是非空数组");
+      return;
+    }
+    setImportLoading(true);
+    setImportResult("");
+    try {
+      const res = await fetch("/api/admin/import/local", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tournamentId: selectedTournamentId, matches: parsed }),
       });
-      if (importDate) params.set("date", importDate);
-      const res = await fetch(`/api/admin/import/fixtures?${params}`);
       const data = await res.json();
       if (data.success) {
-        setImportPreview(data.data || []);
+        setImportResult(`成功导入 ${data.data.imported} 场比赛`);
+        loadData();
       } else {
-        alert(data.error || "获取赛程失败");
+        alert(data.error || "导入失败");
       }
     } catch {
       alert("网络错误");
@@ -144,81 +144,95 @@ export default function AdminTournamentsPage() {
     }
   };
 
-  const handleImportMatch = async (fixture: ApiFixture) => {
-    if (!selectedTournamentId) {
-      alert("请先选择一个赛事");
-      return;
-    }
-    setImportingIds((prev) => new Set(prev).add(fixture.fixtureId));
-    try {
-      const res = await fetch("/api/admin/import/match", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tournamentId: selectedTournamentId,
-          fixtureId: fixture.fixtureId,
-          homeTeam: fixture.homeTeam,
-          awayTeam: fixture.awayTeam,
-          homeTeamLogo: fixture.homeTeamLogo,
-          awayTeamLogo: fixture.awayTeamLogo,
-          kickoffTime: fixture.date,
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        loadData();
-      } else {
-        alert(data.error || "导入失败");
-      }
-    } catch {
-      alert("网络错误");
-    } finally {
-      setImportingIds((prev) => {
-        const next = new Set(prev);
-        next.delete(fixture.fixtureId);
-        return next;
-      });
-    }
-  };
-
   const openOddsModal = (match: Match) => {
     setSelectedMatch(match);
     const o = match.odds;
-    setOddsForm({
+    const form: Record<string, string> = {
       x1xHome: o.x1x.home?.toString() || "",
       x1xDraw: o.x1x.draw?.toString() || "",
       x1xAway: o.x1x.away?.toString() || "",
-      tg0: o.totalGoals.find((g) => g.label === "0球")?.value?.toString() || "",
-      tg1: o.totalGoals.find((g) => g.label === "1球")?.value?.toString() || "",
-      tg2: o.totalGoals.find((g) => g.label === "2球")?.value?.toString() || "",
-      tg3: o.totalGoals.find((g) => g.label === "3球+")?.value?.toString() || "",
-      cs10: o.correctScore.find((s) => s.label === "1:0")?.value?.toString() || "",
-      cs11: o.correctScore.find((s) => s.label === "1:1")?.value?.toString() || "",
-      cs20: o.correctScore.find((s) => s.label === "2:0")?.value?.toString() || "",
-      cs21: o.correctScore.find((s) => s.label === "2:1")?.value?.toString() || "",
-      cs01: o.correctScore.find((s) => s.label === "0:1")?.value?.toString() || "",
-      cs00: o.correctScore.find((s) => s.label === "0:0")?.value?.toString() || "",
-    });
+    };
+
+    // Handicap — extract handicap value from existing keys (e.g. "-1:home" → "-1")
+    const hcKeys = Object.keys(o.handicapX1x);
+    if (hcKeys.length > 0) {
+      const hcValue = hcKeys[0].split(":")[0];
+      form.hcValue = hcValue;
+      form.hcHome = o.handicapX1x[`${hcValue}:home`]?.toString() || "";
+      form.hcDraw = o.handicapX1x[`${hcValue}:draw`]?.toString() || "";
+      form.hcAway = o.handicapX1x[`${hcValue}:away`]?.toString() || "";
+    } else {
+      form.hcValue = "-1";
+    }
+
+    // Half/Full
+    const hfOptions = ["胜胜", "胜平", "胜负", "平胜", "平平", "平负", "负胜", "负平", "负负"];
+    for (const opt of hfOptions) {
+      form[`hf_${opt}`] = o.halfFull.find((h) => h.label === opt)?.value?.toString() || "";
+    }
+
+    // Total Goals
+    const tgOptions = ["0球", "1球", "2球", "3球", "4球", "5球", "6球", "7+"];
+    for (const opt of tgOptions) {
+      form[`tg_${opt}`] = o.totalGoals.find((g) => g.label === opt)?.value?.toString() || "";
+    }
+
+    // Correct Score
+    const csOptions = [
+      "1:0", "2:0", "2:1", "3:0", "3:1", "3:2", "4:0", "4:1", "4:2", "5:0", "5:1", "5:2",
+      "0:0", "1:1", "2:2", "3:3",
+      "0:1", "0:2", "1:2", "0:3", "1:3", "2:3", "0:4", "1:4", "2:4", "0:5", "1:5", "2:5",
+      "胜其它", "平其它", "负其它",
+    ];
+    for (const opt of csOptions) {
+      form[`cs_${opt}`] = o.correctScore.find((s) => s.label === opt)?.value?.toString() || "";
+    }
+
+    setOddsForm(form);
     setShowEditOdds(true);
   };
 
   const saveOdds = async () => {
     if (!selectedMatch) return;
-    const odds = [
-      { betType: "X1X" as const, optionKey: "home", oddsValue: parseFloat(oddsForm.x1xHome) },
-      { betType: "X1X" as const, optionKey: "draw", oddsValue: parseFloat(oddsForm.x1xDraw) },
-      { betType: "X1X" as const, optionKey: "away", oddsValue: parseFloat(oddsForm.x1xAway) },
-      { betType: "TOTAL_GOALS" as const, optionKey: "0球", oddsValue: parseFloat(oddsForm.tg0) },
-      { betType: "TOTAL_GOALS" as const, optionKey: "1球", oddsValue: parseFloat(oddsForm.tg1) },
-      { betType: "TOTAL_GOALS" as const, optionKey: "2球", oddsValue: parseFloat(oddsForm.tg2) },
-      { betType: "TOTAL_GOALS" as const, optionKey: "3球+", oddsValue: parseFloat(oddsForm.tg3) },
-      { betType: "CORRECT_SCORE" as const, optionKey: "1:0", oddsValue: parseFloat(oddsForm.cs10) },
-      { betType: "CORRECT_SCORE" as const, optionKey: "1:1", oddsValue: parseFloat(oddsForm.cs11) },
-      { betType: "CORRECT_SCORE" as const, optionKey: "2:0", oddsValue: parseFloat(oddsForm.cs20) },
-      { betType: "CORRECT_SCORE" as const, optionKey: "2:1", oddsValue: parseFloat(oddsForm.cs21) },
-      { betType: "CORRECT_SCORE" as const, optionKey: "0:1", oddsValue: parseFloat(oddsForm.cs01) },
-      { betType: "CORRECT_SCORE" as const, optionKey: "0:0", oddsValue: parseFloat(oddsForm.cs00) },
-    ].filter((o) => !isNaN(o.oddsValue));
+    const odds: { betType: string; optionKey: string; oddsValue: number }[] = [];
+
+    // X1X
+    for (const [key, optKey] of [["x1xHome", "home"], ["x1xDraw", "draw"], ["x1xAway", "away"]] as const) {
+      const v = parseFloat(oddsForm[key]);
+      if (!isNaN(v)) odds.push({ betType: "X1X", optionKey: optKey, oddsValue: v });
+    }
+
+    // Handicap X1X
+    const hc = oddsForm.hcValue?.trim();
+    if (hc) {
+      for (const [key, side] of [["hcHome", "home"], ["hcDraw", "draw"], ["hcAway", "away"]] as const) {
+        const v = parseFloat(oddsForm[key]);
+        if (!isNaN(v)) odds.push({ betType: "HANDICAP_X1X", optionKey: `${hc}:${side}`, oddsValue: v });
+      }
+    }
+
+    // Half/Full
+    for (const opt of ["胜胜", "胜平", "胜负", "平胜", "平平", "平负", "负胜", "负平", "负负"]) {
+      const v = parseFloat(oddsForm[`hf_${opt}`]);
+      if (!isNaN(v)) odds.push({ betType: "HALF_FULL", optionKey: opt, oddsValue: v });
+    }
+
+    // Total Goals
+    for (const opt of ["0球", "1球", "2球", "3球", "4球", "5球", "6球", "7+"]) {
+      const v = parseFloat(oddsForm[`tg_${opt}`]);
+      if (!isNaN(v)) odds.push({ betType: "TOTAL_GOALS", optionKey: opt, oddsValue: v });
+    }
+
+    // Correct Score
+    for (const opt of [
+      "1:0", "2:0", "2:1", "3:0", "3:1", "3:2", "4:0", "4:1", "4:2", "5:0", "5:1", "5:2",
+      "0:0", "1:1", "2:2", "3:3",
+      "0:1", "0:2", "1:2", "0:3", "1:3", "2:3", "0:4", "1:4", "2:4", "0:5", "1:5", "2:5",
+      "胜其它", "平其它", "负其它",
+    ]) {
+      const v = parseFloat(oddsForm[`cs_${opt}`]);
+      if (!isNaN(v)) odds.push({ betType: "CORRECT_SCORE", optionKey: opt, oddsValue: v });
+    }
 
     const res = await fetch("/api/admin/odds", {
       method: "POST",
@@ -240,17 +254,19 @@ export default function AdminTournamentsPage() {
     const awayScore = Number(settleForm.awayScore);
     const halfHomeScore = settleForm.halfHomeScore === "" ? undefined : Number(settleForm.halfHomeScore);
     const halfAwayScore = settleForm.halfAwayScore === "" ? undefined : Number(settleForm.halfAwayScore);
+    const finalHomeScore = settleForm.finalHomeScore === "" ? undefined : Number(settleForm.finalHomeScore);
+    const finalAwayScore = settleForm.finalAwayScore === "" ? undefined : Number(settleForm.finalAwayScore);
     if (isNaN(homeScore) || isNaN(awayScore)) return;
 
     const res = await fetch("/api/admin/matches/settle", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ matchId: settleMatchData.id, homeScore, awayScore, halfHomeScore, halfAwayScore }),
+      body: JSON.stringify({ matchId: settleMatchData.id, homeScore, awayScore, halfHomeScore, halfAwayScore, finalHomeScore, finalAwayScore }),
     });
     const data = await res.json();
     if (data.success) {
       setShowSettle(false);
-      setSettleForm({ homeScore: "", awayScore: "", halfHomeScore: "", halfAwayScore: "" });
+      setSettleForm({ homeScore: "", awayScore: "", halfHomeScore: "", halfAwayScore: "", finalHomeScore: "", finalAwayScore: "" });
       loadData();
     } else {
       alert(data.error || "结算失败");
@@ -309,7 +325,7 @@ export default function AdminTournamentsPage() {
             onClick={() => setShowImport(true)}
             className="px-4 py-2 rounded-lg text-xs bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
           >
-            从 API-Football 导入
+            从本地数据导入
           </button>
           <button
             onClick={() => setShowCreateTournament(true)}
@@ -383,7 +399,13 @@ export default function AdminTournamentsPage() {
                                   <span className="text-[10px] bg-accent/10 text-accent px-1.5 py-0.5 rounded">未开赛</span>
                                 )}
                                 {m.status === "FINISHED" && m.homeScore !== null && (
-                                  <span className="text-xs num font-semibold">{m.homeScore}:{m.awayScore}</span>
+                                  <span className="text-xs num font-semibold">
+                                    {m.homeScore}:{m.awayScore}
+                                    {m.finalHomeScore !== null && m.finalAwayScore !== null &&
+                                      (m.finalHomeScore !== m.homeScore || m.finalAwayScore !== m.awayScore) && (
+                                      <span className="text-text-muted font-normal ml-1">({m.finalHomeScore}:{m.finalAwayScore})</span>
+                                    )}
+                                  </span>
                                 )}
                                 {hasOdds && (
                                   <span className="text-[10px] bg-green/10 text-green px-1.5 py-0.5 rounded">已设赔率</span>
@@ -488,78 +510,129 @@ export default function AdminTournamentsPage() {
 
       {/* Edit Odds Modal */}
       {showEditOdds && selectedMatch && (
-        <Modal onClose={() => setShowEditOdds(false)} title={`编辑赔率 · ${selectedMatch.homeTeam} vs ${selectedMatch.awayTeam}`}>
+        <Modal onClose={() => setShowEditOdds(false)} title={`编辑赔率 · ${selectedMatch.homeTeam} vs ${selectedMatch.awayTeam}`} wide>
           <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+            {/* X1X */}
             <div>
               <label className="text-xs text-text-secondary mb-2 block font-medium">胜负 (X1X)</label>
               <div className="grid grid-cols-3 gap-2">
-                {[
-                  { key: "x1xHome", label: "主胜" },
-                  { key: "x1xDraw", label: "平局" },
-                  { key: "x1xAway", label: "客胜" },
-                ].map((f) => (
-                  <div key={f.key}>
-                    <span className="text-[10px] text-text-muted block mb-1">{f.label}</span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={oddsForm[f.key] || ""}
-                      onChange={(e) => setOddsForm({ ...oddsForm, [f.key]: e.target.value })}
-                      className="input-field w-full rounded-lg px-3 py-2 text-sm num"
-                      placeholder="0.00"
-                    />
+                {([
+                  ["x1xHome", "主胜"], ["x1xDraw", "平局"], ["x1xAway", "客胜"],
+                ] as const).map(([key, label]) => (
+                  <div key={key}>
+                    <span className="text-[10px] text-text-muted block mb-1">{label}</span>
+                    <input type="number" step="0.01" value={oddsForm[key] || ""} onChange={(e) => setOddsForm({ ...oddsForm, [key]: e.target.value })} className="input-field w-full rounded-lg px-3 py-2 text-sm num" placeholder="0.00" />
                   </div>
                 ))}
               </div>
             </div>
+
+            {/* Handicap X1X */}
+            <div>
+              <label className="text-xs text-text-secondary mb-2 block font-medium">让球胜平负 (HANDICAP)</label>
+              <div className="mb-2 flex items-center">
+                <span className="text-[10px] text-text-muted">让球值</span>
+                <input type="text" value={oddsForm.hcValue || ""} onChange={(e) => setOddsForm({ ...oddsForm, hcValue: e.target.value })} className="input-field w-20 rounded-lg px-2 py-1.5 text-sm num ml-2" placeholder="-1" />
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {([
+                  ["hcHome", "主胜"], ["hcDraw", "平局"], ["hcAway", "客胜"],
+                ] as const).map(([key, label]) => (
+                  <div key={key}>
+                    <span className="text-[10px] text-text-muted block mb-1">{label}</span>
+                    <input type="number" step="0.01" value={oddsForm[key] || ""} onChange={(e) => setOddsForm({ ...oddsForm, [key]: e.target.value })} className="input-field w-full rounded-lg px-3 py-2 text-sm num" placeholder="0.00" />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Half/Full */}
+            <div>
+              <label className="text-xs text-text-secondary mb-2 block font-medium">半全场</label>
+              <div className="grid grid-cols-3 gap-2">
+                {([
+                  ["hf_胜胜", "胜-胜"], ["hf_胜平", "胜-平"], ["hf_胜负", "胜-负"],
+                  ["hf_平胜", "平-胜"], ["hf_平平", "平-平"], ["hf_平负", "平-负"],
+                  ["hf_负胜", "负-胜"], ["hf_负平", "负-平"], ["hf_负负", "负-负"],
+                ] as const).map(([key, label]) => (
+                  <div key={key}>
+                    <span className="text-[10px] text-text-muted block mb-1">{label}</span>
+                    <input type="number" step="0.01" value={oddsForm[key] || ""} onChange={(e) => setOddsForm({ ...oddsForm, [key]: e.target.value })} className="input-field w-full rounded-lg px-3 py-2 text-sm num" placeholder="0.00" />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Total Goals */}
             <div>
               <label className="text-xs text-text-secondary mb-2 block font-medium">总进球数</label>
               <div className="grid grid-cols-4 gap-2">
-                {[
-                  { key: "tg0", label: "0球" },
-                  { key: "tg1", label: "1球" },
-                  { key: "tg2", label: "2球" },
-                  { key: "tg3", label: "3球+" },
-                ].map((f) => (
-                  <div key={f.key}>
-                    <span className="text-[10px] text-text-muted block mb-1">{f.label}</span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={oddsForm[f.key] || ""}
-                      onChange={(e) => setOddsForm({ ...oddsForm, [f.key]: e.target.value })}
-                      className="input-field w-full rounded-lg px-3 py-2 text-sm num"
-                      placeholder="0.00"
-                    />
+                {([
+                  ["tg_0球", "0球"], ["tg_1球", "1球"], ["tg_2球", "2球"], ["tg_3球", "3球"],
+                  ["tg_4球", "4球"], ["tg_5球", "5球"], ["tg_6球", "6球"], ["tg_7+", "7+"],
+                ] as const).map(([key, label]) => (
+                  <div key={key}>
+                    <span className="text-[10px] text-text-muted block mb-1">{label}</span>
+                    <input type="number" step="0.01" value={oddsForm[key] || ""} onChange={(e) => setOddsForm({ ...oddsForm, [key]: e.target.value })} className="input-field w-full rounded-lg px-3 py-2 text-sm num" placeholder="0.00" />
                   </div>
                 ))}
               </div>
             </div>
+
+            {/* Correct Score */}
             <div>
               <label className="text-xs text-text-secondary mb-2 block font-medium">猜比分</label>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { key: "cs10", label: "1:0" },
-                  { key: "cs11", label: "1:1" },
-                  { key: "cs20", label: "2:0" },
-                  { key: "cs21", label: "2:1" },
-                  { key: "cs01", label: "0:1" },
-                  { key: "cs00", label: "0:0" },
-                ].map((f) => (
-                  <div key={f.key}>
-                    <span className="text-[10px] text-text-muted block mb-1">{f.label}</span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={oddsForm[f.key] || ""}
-                      onChange={(e) => setOddsForm({ ...oddsForm, [f.key]: e.target.value })}
-                      className="input-field w-full rounded-lg px-3 py-2 text-sm num"
-                      placeholder="0.00"
-                    />
-                  </div>
-                ))}
+              <div className="space-y-1.5">
+                <span className="text-[10px] text-accent">主胜</span>
+                <div className="grid grid-cols-6 gap-1.5">
+                  {([
+                    ["cs_1:0", "1:0"], ["cs_2:0", "2:0"], ["cs_2:1", "2:1"], ["cs_3:0", "3:0"],
+                    ["cs_3:1", "3:1"], ["cs_3:2", "3:2"], ["cs_4:0", "4:0"], ["cs_4:1", "4:1"],
+                    ["cs_4:2", "4:2"], ["cs_5:0", "5:0"], ["cs_5:1", "5:1"], ["cs_5:2", "5:2"],
+                  ] as const).map(([key, label]) => (
+                    <div key={key}>
+                      <span className="text-[10px] text-text-muted block mb-0.5">{label}</span>
+                      <input type="number" step="0.01" value={oddsForm[key] || ""} onChange={(e) => setOddsForm({ ...oddsForm, [key]: e.target.value })} className="input-field w-full rounded px-2 py-1.5 text-xs num" placeholder="0.00" />
+                    </div>
+                  ))}
+                </div>
+                <span className="text-[10px] text-yellow-500">平局</span>
+                <div className="grid grid-cols-6 gap-1.5">
+                  {([
+                    ["cs_0:0", "0:0"], ["cs_1:1", "1:1"], ["cs_2:2", "2:2"], ["cs_3:3", "3:3"],
+                  ] as const).map(([key, label]) => (
+                    <div key={key}>
+                      <span className="text-[10px] text-text-muted block mb-0.5">{label}</span>
+                      <input type="number" step="0.01" value={oddsForm[key] || ""} onChange={(e) => setOddsForm({ ...oddsForm, [key]: e.target.value })} className="input-field w-full rounded px-2 py-1.5 text-xs num" placeholder="0.00" />
+                    </div>
+                  ))}
+                </div>
+                <span className="text-[10px] text-red">客胜</span>
+                <div className="grid grid-cols-6 gap-1.5">
+                  {([
+                    ["cs_0:1", "0:1"], ["cs_0:2", "0:2"], ["cs_1:2", "1:2"], ["cs_0:3", "0:3"],
+                    ["cs_1:3", "1:3"], ["cs_2:3", "2:3"], ["cs_0:4", "0:4"], ["cs_1:4", "1:4"],
+                    ["cs_2:4", "2:4"], ["cs_0:5", "0:5"], ["cs_1:5", "1:5"], ["cs_2:5", "2:5"],
+                  ] as const).map(([key, label]) => (
+                    <div key={key}>
+                      <span className="text-[10px] text-text-muted block mb-0.5">{label}</span>
+                      <input type="number" step="0.01" value={oddsForm[key] || ""} onChange={(e) => setOddsForm({ ...oddsForm, [key]: e.target.value })} className="input-field w-full rounded px-2 py-1.5 text-xs num" placeholder="0.00" />
+                    </div>
+                  ))}
+                </div>
+                <div className="grid grid-cols-3 gap-1.5 mt-1">
+                  {([
+                    ["cs_胜其它", "胜其它"], ["cs_平其它", "平其它"], ["cs_负其它", "负其它"],
+                  ] as const).map(([key, label]) => (
+                    <div key={key}>
+                      <span className="text-[10px] text-text-muted block mb-0.5">{label}</span>
+                      <input type="number" step="0.01" value={oddsForm[key] || ""} onChange={(e) => setOddsForm({ ...oddsForm, [key]: e.target.value })} className="input-field w-full rounded px-2 py-1.5 text-xs num" placeholder="0.00" />
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
+
             <button onClick={saveOdds} className="btn-primary w-full py-3 rounded-xl text-sm">
               保存赔率
             </button>
@@ -572,7 +645,20 @@ export default function AdminTournamentsPage() {
         <Modal onClose={() => setShowSettle(false)} title={`结算 · ${settleMatchData.homeTeam} vs ${settleMatchData.awayTeam}`}>
           <div className="space-y-3">
             <div>
-              <div className="mb-2 text-xs font-semibold text-text-secondary">全场比分</div>
+              <div className="mb-2 text-xs font-semibold text-text-secondary">半场比分</div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-text-secondary text-xs mb-1.5 block">{settleMatchData.homeTeam}</label>
+                  <input type="number" value={settleForm.halfHomeScore} onChange={(e) => setSettleForm({ ...settleForm, halfHomeScore: e.target.value })} className="input-field w-full rounded-xl px-4 py-3 text-sm num" placeholder="0" />
+                </div>
+                <div>
+                  <label className="text-text-secondary text-xs mb-1.5 block">{settleMatchData.awayTeam}</label>
+                  <input type="number" value={settleForm.halfAwayScore} onChange={(e) => setSettleForm({ ...settleForm, halfAwayScore: e.target.value })} className="input-field w-full rounded-xl px-4 py-3 text-sm num" placeholder="0" />
+                </div>
+              </div>
+            </div>
+            <div>
+              <div className="mb-2 text-xs font-semibold text-text-secondary">全场比分（90分钟）<span className="text-accent ml-1">*用于结算</span></div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-text-secondary text-xs mb-1.5 block">{settleMatchData.homeTeam}</label>
@@ -585,19 +671,19 @@ export default function AdminTournamentsPage() {
               </div>
             </div>
             <div>
-              <div className="mb-2 text-xs font-semibold text-text-secondary">半场比分（用于半全场玩法）</div>
+              <div className="mb-2 text-xs font-semibold text-text-secondary">最终比分（含加时/点球）<span className="text-text-muted ml-1">仅记录，不参与结算</span></div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-text-secondary text-xs mb-1.5 block">{settleMatchData.homeTeam}</label>
-                  <input type="number" value={settleForm.halfHomeScore} onChange={(e) => setSettleForm({ ...settleForm, halfHomeScore: e.target.value })} className="input-field w-full rounded-xl px-4 py-3 text-sm num" placeholder="可选" />
+                  <input type="number" value={settleForm.finalHomeScore} onChange={(e) => setSettleForm({ ...settleForm, finalHomeScore: e.target.value })} className="input-field w-full rounded-xl px-4 py-3 text-sm num" placeholder="可选" />
                 </div>
                 <div>
                   <label className="text-text-secondary text-xs mb-1.5 block">{settleMatchData.awayTeam}</label>
-                  <input type="number" value={settleForm.halfAwayScore} onChange={(e) => setSettleForm({ ...settleForm, halfAwayScore: e.target.value })} className="input-field w-full rounded-xl px-4 py-3 text-sm num" placeholder="可选" />
+                  <input type="number" value={settleForm.finalAwayScore} onChange={(e) => setSettleForm({ ...settleForm, finalAwayScore: e.target.value })} className="input-field w-full rounded-xl px-4 py-3 text-sm num" placeholder="可选" />
                 </div>
               </div>
             </div>
-            <p className="text-text-muted text-xs">结算后将自动判定所有关联下注单的中奖状态。</p>
+            <p className="text-text-muted text-xs">结算依据半场+全场（90分钟）比分。最终比分仅作记录。</p>
             <button
               disabled={settleForm.homeScore === "" || settleForm.awayScore === ""}
               onClick={handleSettle}
@@ -611,35 +697,8 @@ export default function AdminTournamentsPage() {
 
       {/* Import Modal */}
       {showImport && (
-        <Modal onClose={() => setShowImport(false)} title="从 API-Football 导入比赛">
+        <Modal onClose={() => { setShowImport(false); setImportResult(""); }} title="从本地数据导入">
           <div className="space-y-4">
-            <div>
-              <label className="text-text-secondary text-xs mb-1.5 block">选择联赛</label>
-              <select
-                value={importLeagueId}
-                onChange={(e) => {
-                  setImportLeagueId(e.target.value);
-                  const league = POPULAR_LEAGUES.find((l) => String(l.id) === e.target.value);
-                  if (league) setImportSeason(league.season);
-                }}
-                className="input-field w-full rounded-xl px-4 py-3 text-sm"
-              >
-                <option value="">选择联赛...</option>
-                {POPULAR_LEAGUES.map((l) => (
-                  <option key={l.id} value={l.id}>{l.name}</option>
-                ))}
-              </select>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-text-secondary text-xs mb-1.5 block">赛季</label>
-                <input value={importSeason} onChange={(e) => setImportSeason(e.target.value)} placeholder="2026" className="input-field w-full rounded-xl px-4 py-3 text-sm" />
-              </div>
-              <div>
-                <label className="text-text-secondary text-xs mb-1.5 block">日期（可选）</label>
-                <input type="date" value={importDate} onChange={(e) => setImportDate(e.target.value)} className="input-field w-full rounded-xl px-4 py-3 text-sm" />
-              </div>
-            </div>
             <div>
               <label className="text-text-secondary text-xs mb-1.5 block">导入到赛事</label>
               <select
@@ -653,40 +712,39 @@ export default function AdminTournamentsPage() {
                 ))}
               </select>
             </div>
+            <div>
+              <label className="text-text-secondary text-xs mb-1.5 block">比赛数据 (JSON)</label>
+              <textarea
+                value={importJson}
+                onChange={(e) => setImportJson(e.target.value)}
+                rows={12}
+                className="input-field w-full rounded-xl px-4 py-3 text-xs font-mono num leading-relaxed"
+                placeholder={`[
+  {
+    "apiMatchId": "500-001",
+    "matchNo": "周二201",
+    "homeTeam": "巴西",
+    "awayTeam": "德国",
+    "kickoffTime": "2026-06-03T00:00:00+08:00",
+    "handicap": -1,
+    "odds": [
+      { "betType": "X1X", "optionKey": "home", "oddsValue": 2.57 },
+      { "betType": "X1X", "optionKey": "draw", "oddsValue": 2.85 },
+      { "betType": "X1X", "optionKey": "away", "oddsValue": 2.57 }
+    ]
+  }
+]`}
+              />
+            </div>
             <button
-              disabled={!importLeagueId || !importSeason || importLoading}
-              onClick={handlePreviewImport}
+              disabled={!selectedTournamentId || !importJson.trim() || importLoading}
+              onClick={handleLocalImport}
               className="btn-primary w-full py-3 rounded-xl text-sm disabled:opacity-40"
             >
-              {importLoading ? "获取中..." : "获取赛程"}
+              {importLoading ? "导入中..." : "确认导入"}
             </button>
-
-            {importPreview.length > 0 && (
-              <div className="border-t border-border pt-3">
-                <div className="text-xs text-text-secondary mb-2">找到 {importPreview.length} 场比赛</div>
-                <div className="space-y-2 max-h-60 overflow-y-auto">
-                  {importPreview.map((f) => {
-                    const kickoff = new Date(f.date);
-                    const timeStr = kickoff.toLocaleString("zh-CN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-                    const isImporting = importingIds.has(f.fixtureId);
-                    return (
-                      <div key={f.fixtureId} className="bg-bg-primary rounded-lg px-3 py-2 flex items-center justify-between">
-                        <div>
-                          <div className="text-xs font-medium">{f.homeTeam} vs {f.awayTeam}</div>
-                          <div className="text-[10px] text-text-muted">{timeStr}</div>
-                        </div>
-                        <button
-                          onClick={() => handleImportMatch(f)}
-                          disabled={isImporting || !selectedTournamentId}
-                          className="text-[10px] px-2.5 py-1 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors disabled:opacity-40"
-                        >
-                          {isImporting ? "导入中..." : "导入"}
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+            {importResult && (
+              <div className="text-accent text-xs text-center">{importResult}</div>
             )}
           </div>
         </Modal>
@@ -695,10 +753,10 @@ export default function AdminTournamentsPage() {
   );
 }
 
-function Modal({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) {
+function Modal({ title, children, onClose, wide }: { title: string; children: React.ReactNode; onClose: () => void; wide?: boolean }) {
   return (
     <div className="fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4">
-      <div className="bg-bg-surface w-full max-w-md rounded-2xl p-6 animate-fade-in-up">
+      <div className={`bg-bg-surface w-full rounded-2xl p-6 animate-fade-in-up ${wide ? "max-w-lg" : "max-w-md"}`}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-display text-base font-semibold">{title}</h3>
           <button onClick={onClose} className="text-text-muted hover:text-text-secondary">

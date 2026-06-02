@@ -6,10 +6,10 @@ import { withAdmin } from "@/lib/with-auth";
 
 export const POST = withAdmin(async (req: NextRequest) => {
   try {
-    const { matchId, homeScore, awayScore, halfHomeScore, halfAwayScore } = await req.json();
+    const { matchId, homeScore, awayScore, halfHomeScore, halfAwayScore, finalHomeScore, finalAwayScore } = await req.json();
 
     if (matchId === undefined || homeScore === undefined || awayScore === undefined) {
-      return apiError("比赛ID、主队比分、客队比分为必填");
+      return apiError("比赛ID、全场比分为必填");
     }
 
     const match = await prisma.match.findUnique({ where: { id: matchId } });
@@ -17,6 +17,8 @@ export const POST = withAdmin(async (req: NextRequest) => {
 
     const parsedHalfHomeScore = halfHomeScore === undefined || halfHomeScore === "" ? undefined : Number(halfHomeScore);
     const parsedHalfAwayScore = halfAwayScore === undefined || halfAwayScore === "" ? undefined : Number(halfAwayScore);
+    const parsedFinalHomeScore = finalHomeScore === undefined || finalHomeScore === "" ? undefined : Number(finalHomeScore);
+    const parsedFinalAwayScore = finalAwayScore === undefined || finalAwayScore === "" ? undefined : Number(finalAwayScore);
 
     const hasHalfFullBet = await prisma.betItem.count({
       where: { matchId: Number(matchId), betMarket: "HALF_FULL", result: "PENDING" },
@@ -30,11 +32,14 @@ export const POST = withAdmin(async (req: NextRequest) => {
       Number(homeScore),
       Number(awayScore),
       parsedHalfHomeScore,
-      parsedHalfAwayScore
+      parsedHalfAwayScore,
+      parsedFinalHomeScore,
+      parsedFinalAwayScore
     );
 
     return apiSuccess({ message: "结算完成" });
   } catch (e) {
+    console.error("Settle match error:", e);
     console.error("Settle match error:", e);
     return apiError("结算失败", 500);
   }
@@ -45,12 +50,22 @@ async function settleMatch(
   homeScore: number,
   awayScore: number,
   halfHomeScore?: number,
-  halfAwayScore?: number
+  halfAwayScore?: number,
+  finalHomeScore?: number,
+  finalAwayScore?: number
 ) {
   await prisma.$transaction(async (tx) => {
     await tx.match.update({
       where: { id: matchId },
-      data: { homeScore, awayScore, status: "FINISHED" },
+      data: {
+        homeScore,
+        awayScore,
+        halfHomeScore,
+        halfAwayScore,
+        finalHomeScore,
+        finalAwayScore,
+        status: "FINISHED",
+      },
     });
 
     const betItems = await tx.betItem.findMany({

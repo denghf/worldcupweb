@@ -17,7 +17,18 @@ export const GET = withAdmin(async (req: NextRequest) => {
       user: { select: { nickname: true, username: true } },
       items: {
         include: {
-          match: { select: { homeTeam: true, awayTeam: true, kickoffTime: true } },
+          match: {
+            select: {
+              homeTeam: true,
+              awayTeam: true,
+              kickoffTime: true,
+              homeScore: true,
+              awayScore: true,
+              halfHomeScore: true,
+              halfAwayScore: true,
+              odds: true,
+            },
+          },
         },
       },
     },
@@ -143,5 +154,31 @@ export const PATCH = withAdmin(async (req: NextRequest) => {
   } catch (e) {
     console.error("Review error:", e);
     return apiError("操作失败", 500);
+  }
+});
+
+export const DELETE = withAdmin(async (req: NextRequest) => {
+  try {
+    const { betId } = await req.json();
+    if (!betId) return apiError("下注单ID必填");
+
+    const bet = await prisma.bet.findUnique({
+      where: { id: betId },
+      include: { items: { include: { match: { select: { status: true } } } } },
+    });
+    if (!bet) return apiError("下注单不存在");
+
+    const settled = ["WON", "LOST", "CANCELLED"];
+    if (settled.includes(bet.status)) return apiError("已结算的下注不能删除");
+
+    const anyMatchFinished = bet.items.some((item) => item.match.status === "FINISHED");
+    if (anyMatchFinished) return apiError("关联比赛已结束，不能删除");
+
+    await prisma.bet.delete({ where: { id: betId } });
+
+    return apiSuccess({ message: "已删除" });
+  } catch (e) {
+    console.error("Delete bet error:", e);
+    return apiError("删除失败", 500);
   }
 });
