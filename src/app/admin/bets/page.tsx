@@ -241,9 +241,7 @@ export default function BetManagementPage() {
   };
 
   const STATUS_MAP: Record<string, { label: string; cls: string }> = {
-    PENDING_REVIEW: { label: "待审核", cls: "bg-yellow/10 text-yellow" },
-    APPROVED: { label: "已生效", cls: "bg-accent/10 text-accent" },
-    ACTIVE: { label: "进行中", cls: "bg-accent/10 text-accent" },
+    APPROVED: { label: "已下注", cls: "bg-accent/10 text-accent" },
     WON: { label: "已中奖", cls: "bg-green/10 text-green" },
     LOST: { label: "未中奖", cls: "bg-red/10 text-red" },
     CANCELLED: { label: "已取消", cls: "bg-text-muted/10 text-text-muted" },
@@ -529,7 +527,7 @@ export default function BetManagementPage() {
                     <div className="text-right text-xs text-text-muted py-2 min-w-[100px]">
                       <div>串关 ×{parlayItems.length}</div>
                       <div>赔率 <span className="num text-text-primary">{parlayRoundedOdds.toFixed(2)}</span></div>
-                      {parlayAmount && <div>可赢 <span className="num text-accent">¥{parlayPayout}</span></div>}
+                      {parlayAmount && <div>可赢 <span className="num text-accent">{parlayPayout}</span></div>}
                     </div>
                     <button onClick={handleParlaySubmit}
                       disabled={!selectedPlayer || !parlayAmount || submitting}
@@ -588,7 +586,7 @@ export default function BetManagementPage() {
                         ))}
                       </td>
                       <td className="py-2.5 px-4 text-right num text-xs">{Number(bet.lockedTotalOdds).toFixed(2)}</td>
-                      <td className="py-2.5 px-4 text-right num">¥{Number(bet.totalAmount).toFixed(0)}</td>
+                      <td className="py-2.5 px-4 text-right num">{Number(bet.totalAmount).toFixed(0)}</td>
                       <td className="py-2.5 px-4 text-right">
                         <span className={`text-[10px] px-2 py-0.5 rounded-full ${st.cls}`}>{st.label}</span>
                       </td>
@@ -626,7 +624,7 @@ export default function BetManagementPage() {
                 </div>
               ))}
               <div className="pt-1 border-t border-border/30 font-medium">
-                金额 ¥{Number(deleteTarget.totalAmount).toFixed(0)}
+                金额 {Number(deleteTarget.totalAmount).toFixed(0)}
               </div>
             </div>
             <div className="flex gap-3">

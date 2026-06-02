@@ -22,9 +22,7 @@ interface Bet {
 }
 
 const STATUS_MAP: Record<string, { label: string; badge: string }> = {
-  PENDING_REVIEW: { label: "待审核", badge: "badge-pending" },
-  APPROVED: { label: "已生效", badge: "badge-active" },
-  ACTIVE: { label: "进行中", badge: "badge-active" },
+  APPROVED: { label: "已下注", badge: "badge-active" },
   WON: { label: "已中奖", badge: "badge-won" },
   LOST: { label: "未中奖", badge: "badge-lost" },
   CANCELLED: { label: "已取消", badge: "badge-cancelled" },
@@ -46,7 +44,7 @@ const MARKET_NAMES: Record<string, string> = {
   CORRECT_SCORE: "猜比分",
 };
 
-type Tab = "all" | "ACTIVE" | "WON" | "LOST";
+type Tab = "all" | "APPROVED" | "WON" | "LOST";
 
 export default function BetsPage() {
   const [bets, setBets] = useState<Bet[]>([]);
@@ -73,7 +71,7 @@ export default function BetsPage() {
   }, []);
 
   const filtered = tab === "all" ? bets : bets.filter((bet) => bet.status === tab);
-  const activeCount = bets.filter((bet) => bet.status === "ACTIVE").length;
+  const approvedCount = bets.filter((bet) => bet.status === "APPROVED").length;
   const wonCount = bets.filter((bet) => bet.status === "WON").length;
   const totalAmount = bets.reduce((sum, bet) => sum + bet.totalAmount, 0);
 
@@ -96,13 +94,13 @@ export default function BetsPage() {
           </div>
           <div className="rounded-2xl bg-bg-surface px-3 py-2 text-right">
             <div className="num text-2xl font-black text-accent">{bets.length}</div>
-            <div className="text-[10px] font-semibold text-text-muted">总票数</div>
+            <div className="text-[10px] font-semibold text-text-muted">总下注</div>
           </div>
         </div>
         <div className="grid grid-cols-3 gap-2">
-          <SummaryCard label="进行中" value={activeCount} />
+          <SummaryCard label="已下注" value={approvedCount} />
           <SummaryCard label="已中奖" value={wonCount} highlight />
-          <SummaryCard label="总下注" value={`¥${Math.round(totalAmount)}`} />
+          <SummaryCard label="总下注额" value={`${Math.round(totalAmount)}`} />
         </div>
       </section>
 
@@ -110,7 +108,7 @@ export default function BetsPage() {
         <div className="flex gap-2 overflow-x-auto pb-1">
           {([
             { key: "all", label: "全部" },
-            { key: "ACTIVE", label: "进行中" },
+            { key: "APPROVED", label: "已下注" },
             { key: "WON", label: "已中奖" },
             { key: "LOST", label: "未中奖" },
           ] as const).map((item) => (
@@ -155,69 +153,70 @@ function SummaryCard({ label, value, highlight = false }: { label: string; value
 
 function BetCard({ bet, index }: { bet: Bet; index: number }) {
   const statusInfo = STATUS_MAP[bet.status] ?? { label: bet.status, badge: "badge-cancelled" };
-  const payoutText = bet.status === "WON" && bet.actualPayout !== null
-    ? `+¥${Math.round(bet.actualPayout)}`
-    : bet.status === "LOST"
-      ? `-¥${Math.round(bet.totalAmount)}`
-      : `可赢 ¥${Math.round(bet.potentialPayout)}`;
+  const isParlay = bet.betMode === "PARLAY";
+  const item = bet.items[0];
 
   return (
-    <article className={`glass rounded-2xl p-3.5 animate-fade-in-up stagger-${Math.min(index + 1, 5)}`}>
-      <div className="mb-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Avatar name={bet.user?.nickname || "未知"} />
-          <div>
-            <div className="text-sm font-extrabold text-text-primary">{bet.user?.nickname || "未知玩家"}</div>
-            <div className="text-[10px] font-semibold text-text-muted">{bet.betMode === "PARLAY" ? `串关 ×${bet.items.length}` : "单关"}</div>
-          </div>
+    <article className={`glass rounded-2xl px-3.5 py-3 animate-fade-in-up stagger-${Math.min(index + 1, 5)}`}>
+      {/* 第一行：昵称 + 玩法 + 状态 */}
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="text-sm font-extrabold text-text-primary truncate">{bet.user?.nickname || "未知"}</span>
+          <span className="shrink-0 text-[10px] font-semibold text-text-muted">{isParlay ? `串关×${bet.items.length}` : "单关"}</span>
         </div>
-        <span className={`${statusInfo.badge} rounded-full px-2.5 py-1 text-[10px] font-bold`}>{statusInfo.label}</span>
+        <span className={`${statusInfo.badge} shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold`}>{statusInfo.label}</span>
       </div>
 
-      <div className="space-y-1.5">
-        {bet.items.map((item, itemIndex) => {
-          const optionLabel = formatOptionLabel(item.betMarket, item.selectedOption);
-          return (
-            <div key={itemIndex} className="rounded-xl border border-border bg-bg-surface px-3 py-2">
-              <div className="mb-1 flex items-center justify-between gap-3">
-                <span className="truncate text-xs font-bold text-text-primary">
-                  {item.match?.homeTeam || "?"} VS {item.match?.awayTeam || "?"}
-                </span>
-                <span className="num text-xs font-black text-accent">@ {Number(item.lockedOdds).toFixed(2)}</span>
-              </div>
-              <div className="flex items-center gap-2 text-[10px] font-semibold text-text-muted">
-                <span>{MARKET_NAMES[item.betMarket] ?? item.betMarket}</span>
-                <span className="h-1 w-1 rounded-full bg-text-muted/50" />
-                <span className="text-accent">{optionLabel}</span>
+      {/* 比赛信息 + 金额 */}
+      {isParlay ? (
+        <div className="space-y-1.5">
+          {bet.items.map((it, i) => (
+            <div key={i} className="flex items-center justify-between text-xs">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="shrink-0 text-[10px] text-text-muted num">{i + 1}.</span>
+                <span className="truncate font-medium text-text-primary">{it.match?.homeTeam || "?"} VS {it.match?.awayTeam || "?"}</span>
+                <span className="shrink-0 text-text-muted">·</span>
+                <span className="shrink-0 text-accent">{formatOptionLabel(it.betMarket, it.selectedOption)}</span>
+                <span className="shrink-0 num text-text-muted">@{Number(it.lockedOdds).toFixed(2)}</span>
               </div>
             </div>
-          );
-        })}
-      </div>
-
-      <div className="mt-3 grid grid-cols-3 gap-2 border-t border-border pt-3">
-        <TicketMetric label="下注" value={`¥${Math.round(bet.totalAmount)}`} />
-        <TicketMetric label="总赔率" value={bet.lockedTotalOdds.toFixed(2)} />
-        <TicketMetric label={bet.status === "WON" ? "返奖" : bet.status === "LOST" ? "结果" : "预计"} value={payoutText} highlight={bet.status !== "LOST"} />
-      </div>
+          ))}
+          <div className="flex items-center justify-between text-xs pt-1 border-t border-border/30">
+            <span className="text-[10px] text-text-muted">串关×{bet.items.length} · 赔率 {bet.lockedTotalOdds.toFixed(2)}</span>
+            <PayoutLabel bet={bet} />
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-center justify-between text-xs">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="truncate font-medium text-text-primary">{item.match?.homeTeam || "?"} VS {item.match?.awayTeam || "?"}</span>
+            <span className="shrink-0 text-text-muted">·</span>
+            <span className="shrink-0 text-accent">{formatOptionLabel(item.betMarket, item.selectedOption)}</span>
+            <span className="shrink-0 num text-text-muted">@{Number(item.lockedOdds).toFixed(2)}</span>
+          </div>
+          <PayoutLabel bet={bet} />
+        </div>
+      )}
     </article>
   );
 }
 
-function Avatar({ name }: { name: string }) {
-  return (
-    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-red/10 to-gold/20 text-sm font-black text-accent shadow-inner">
-      {name.slice(0, 1)}
-    </div>
-  );
-}
+function PayoutLabel({ bet }: { bet: Bet }) {
+  const amount = Math.round(bet.totalAmount);
+  const potential = Math.round(bet.potentialPayout);
 
-function TicketMetric({ label, value, highlight = false }: { label: string; value: string; highlight?: boolean }) {
+  if (bet.status === "WON" && bet.actualPayout !== null) {
+    return <span className="shrink-0 text-right num text-xs font-bold text-accent">奖励:{Math.round(bet.actualPayout)}</span>;
+  }
+  if (bet.status === "LOST") {
+    return <span className="shrink-0 text-right num text-xs text-text-secondary">投注:{amount}</span>;
+  }
   return (
-    <div>
-      <div className="text-[10px] font-semibold text-text-muted">{label}</div>
-      <div className={`num mt-0.5 text-sm font-black ${highlight ? "text-accent" : "text-text-primary"}`}>{value}</div>
-    </div>
+    <span className="shrink-0 text-right text-xs text-text-muted">
+      <span className="num">投注:{amount}</span>
+      <span className="mx-1">·</span>
+      <span className="num">预计奖励:{potential}</span>
+    </span>
   );
 }
 

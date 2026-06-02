@@ -45,9 +45,7 @@ interface Bet {
 }
 
 const STATUS_MAP: Record<string, { label: string; badge: string }> = {
-  PENDING_REVIEW: { label: "待审核", badge: "badge-pending" },
-  APPROVED: { label: "已生效", badge: "badge-active" },
-  ACTIVE: { label: "进行中", badge: "badge-active" },
+  APPROVED: { label: "已下注", badge: "badge-active" },
   WON: { label: "已中奖", badge: "badge-won" },
   LOST: { label: "未中奖", badge: "badge-lost" },
   CANCELLED: { label: "已取消", badge: "badge-cancelled" },
@@ -75,7 +73,7 @@ const exactHomeScores = new Set(["1:0", "2:0", "2:1", "3:0", "3:1", "3:2", "4:0"
 const exactDrawScores = new Set(["0:0", "1:1", "2:2", "3:3"]);
 const exactAwayScores = new Set(["0:1", "0:2", "1:2", "0:3", "1:3", "2:3", "0:4", "1:4", "2:4", "0:5", "1:5", "2:5"]);
 
-type Filter = "ALL" | "ACTIVE" | "WON" | "LOST" | "PENDING_REVIEW" | "APPROVED";
+type Filter = "ALL" | "APPROVED" | "WON" | "LOST";
 
 export default function BetDetailsPage() {
   const [bets, setBets] = useState<Bet[]>([]);
@@ -113,9 +111,7 @@ export default function BetDetailsPage() {
       <div className="flex gap-1.5 mb-4 overflow-x-auto pb-1">
         {([
           { key: "ALL", label: "全部" },
-          { key: "PENDING_REVIEW", label: "待审核" },
-          { key: "APPROVED", label: "已生效" },
-          { key: "ACTIVE", label: "进行中" },
+          { key: "APPROVED", label: "已下注" },
           { key: "WON", label: "已中奖" },
           { key: "LOST", label: "未中奖" },
         ] as const).map((f) => (
@@ -170,9 +166,9 @@ export default function BetDetailsPage() {
                       </span>
                       <div className="flex items-center gap-3">
                         <span className="num text-text-secondary">赔率 {bet.lockedTotalOdds.toFixed(2)}</span>
-                        <span className="num font-medium">¥{bet.totalAmount}</span>
+                        <span className="num font-medium">{bet.totalAmount}</span>
                         {bet.status === "WON" && bet.actualPayout !== null && (
-                          <span className="num text-accent font-semibold">+¥{Math.round(bet.actualPayout).toLocaleString()}</span>
+                          <span className="num text-accent font-semibold">+{Math.round(bet.actualPayout).toLocaleString()}</span>
                         )}
                       </div>
                     </div>
@@ -222,7 +218,7 @@ export default function BetDetailsPage() {
                       })}
                       <div className="flex items-center justify-between text-xs pt-1">
                         <span className="text-text-muted">潜在赔付</span>
-                        <span className="num text-text-secondary">¥{Math.round(bet.potentialPayout).toLocaleString()}</span>
+                        <span className="num text-text-secondary">{Math.round(bet.potentialPayout).toLocaleString()}</span>
                       </div>
                     </div>
                   )}

@@ -20,22 +20,7 @@ export async function POST(req: NextRequest) {
       data: { status: "SEALED" },
     });
 
-    // 同时将关联的 APPROVED 下注单标记为 ACTIVE
-    if (result.count > 0) {
-      const sealedMatches = await prisma.match.findMany({
-        where: { status: "SEALED" },
-        select: { id: true },
-      });
-      const matchIds = sealedMatches.map((m) => m.id);
-
-      await prisma.bet.updateMany({
-        where: {
-          status: "APPROVED",
-          items: { some: { matchId: { in: matchIds } } },
-        },
-        data: { status: "ACTIVE" },
-      });
-    }
+    // 下注单保持 APPROVED 状态，无需转为 ACTIVE
 
     return apiSuccess({ sealed: result.count });
   } catch (e) {

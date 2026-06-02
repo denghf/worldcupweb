@@ -19,9 +19,11 @@
     "seed": "npx tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@multiavatar/multiavatar": "^1.0.7",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "bcryptjs": "^3.0.3",
+    "boring-avatars": "^2.0.4",
     "dotenv": "^17.4.2",
     "jose": "^6.2.3",
     "jsonwebtoken": "^9.0.3",

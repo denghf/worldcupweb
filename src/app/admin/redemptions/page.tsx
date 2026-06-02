@@ -43,7 +43,7 @@ export default function RedemptionsPage() {
         <div className="glass rounded-xl px-4 py-3">
           <div className="text-text-muted text-xs mb-1">中奖总额</div>
           <div className="num text-xl font-bold text-accent">
-            ¥{Math.round(totalPending).toLocaleString()}
+            {Math.round(totalPending).toLocaleString()}
           </div>
         </div>
       </div>
@@ -67,7 +67,7 @@ export default function RedemptionsPage() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="num text-accent font-semibold text-sm">+¥{Math.round(win.winAmount).toLocaleString()}</div>
+                  <div className="num text-accent font-semibold text-sm">+{Math.round(win.winAmount).toLocaleString()}</div>
                 </div>
               </div>
               <div className="flex items-center justify-between">

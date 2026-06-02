@@ -245,7 +245,7 @@ export default function PlayersPage() {
                   </td>
                   <td className="py-3 px-4 text-right num text-text-secondary">{player.totalBets}</td>
                   <td className={`py-3 px-4 text-right num font-medium ${player.netProfit >= 0 ? "text-accent" : "text-red"}`}>
-                    {player.netProfit >= 0 ? "+" : ""}¥{player.netProfit}
+                    {player.netProfit >= 0 ? "+" : ""}{player.netProfit}
                   </td>
                   <td className="py-3 px-4 text-right">
                     <div className="flex items-center justify-end gap-1.5">

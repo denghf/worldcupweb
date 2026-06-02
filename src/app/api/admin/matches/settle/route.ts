@@ -143,7 +143,7 @@ async function settleMatch(
     const affectedBets = await tx.bet.findMany({
       where: {
         id: { in: affectedBetIds },
-        status: { in: ["APPROVED", "ACTIVE"] },
+        status: { in: ["APPROVED"] },
       },
       include: { items: true },
     });

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import multiavatar from "@multiavatar/multiavatar";
 
 interface Ranking {
   rank: number;
@@ -14,7 +15,7 @@ interface Ranking {
   winRate: number;
 }
 
-type SortKey = "netProfit" | "winRate";
+type SortKey = "netProfit" | "winRate" | "totalBetAmount";
 
 export default function RankingPage() {
   const [rankings, setRankings] = useState<Ranking[]>([]);
@@ -39,11 +40,19 @@ export default function RankingPage() {
       .catch(() => setLoading(false));
   }, []);
 
-  const sorted = [...rankings].sort((a, b) =>
-    sortBy === "netProfit" ? b.netProfit - a.netProfit : b.winRate - a.winRate
-  );
+  const sorted = [...rankings].sort((a, b) => {
+    if (sortBy === "netProfit") return b.netProfit - a.netProfit;
+    if (sortBy === "winRate") return b.winRate - a.winRate;
+    return b.totalBetAmount - a.totalBetAmount;
+  });
   const ranked = sorted.map((item, index) => ({ ...item, rank: index + 1 }));
   const champion = ranked[0];
+
+  const bigWinner = [...rankings].sort((a, b) => b.netProfit - a.netProfit)[0];
+  const bigSpender = [...rankings].sort((a, b) => b.totalBetAmount - a.totalBetAmount)[0];
+  const luckyStar = [...rankings]
+    .filter((p) => p.totalBets > 0)
+    .sort((a, b) => b.winRate - a.winRate)[0];
 
   if (loading) {
     return (
@@ -85,7 +94,7 @@ export default function RankingPage() {
                 </div>
               </div>
               <div className="text-right">
-                <div className="num text-xl font-black">{champion.netProfit >= 0 ? "+" : ""}¥{Math.round(champion.netProfit)}</div>
+                <div className="num text-xl font-black">{champion.netProfit >= 0 ? "+" : ""}{Math.round(champion.netProfit)}</div>
                 <div className="text-[10px] opacity-75">胜率 {champion.winRate}%</div>
               </div>
             </div>
@@ -94,9 +103,9 @@ export default function RankingPage() {
       </section>
 
       <section className="mb-3 grid grid-cols-3 gap-2">
-        <StatTile icon="🏆" label="榜首盈利" value={`¥${Math.round(champion?.netProfit ?? 0)}`} />
-        <StatTile icon="🪙" label="总返奖" value={`¥${Math.round(rankings.reduce((sum, player) => sum + player.totalWinAmount, 0))}`} />
-        <StatTile icon="🎯" label="最高胜率" value={`${Math.max(...rankings.map((player) => player.winRate))}%`} />
+        <TopPlayerCard title="大赢家" player={bigWinner} value={bigWinner ? `${Math.round(bigWinner.netProfit >= 0 ? bigWinner.netProfit : 0)}` : "-"} />
+        <TopPlayerCard title="大财主" player={bigSpender} value={bigSpender ? `${Math.round(bigSpender.totalBetAmount)}` : "-"} />
+        <TopPlayerCard title="手气王" player={luckyStar} value={luckyStar ? `${luckyStar.winRate}%` : "-"} />
       </section>
 
       <div className="sticky top-12 z-30 -mx-3 mb-3 border-b border-border bg-bg-deep/95 px-3 pb-2 pt-1 backdrop-blur-xl">
@@ -112,6 +121,16 @@ export default function RankingPage() {
             总榜
           </button>
           <button
+            onClick={() => setSortBy("totalBetAmount")}
+            className={`rounded-xl px-4 py-2 text-xs font-bold transition-all ${
+              sortBy === "totalBetAmount"
+                ? "bg-accent text-white shadow-[0_8px_18px_rgba(230,0,18,0.18)]"
+                : "bg-white text-text-secondary shadow-sm"
+            }`}
+          >
+            投注额
+          </button>
+          <button
             onClick={() => setSortBy("winRate")}
             className={`rounded-xl px-4 py-2 text-xs font-bold transition-all ${
               sortBy === "winRate"
@@ -125,10 +144,11 @@ export default function RankingPage() {
       </div>
 
       <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
-        <div className="grid grid-cols-[42px_1fr_72px_54px] border-b border-border px-3 py-2 text-[10px] font-bold text-text-muted">
+        <div className="grid grid-cols-[42px_1fr_72px_72px_54px] border-b border-border px-3 py-2 text-[10px] font-bold text-text-muted">
           <span>排名</span>
           <span>用户</span>
           <span className="text-right">积分</span>
+          <span className="text-right">投注额</span>
           <span className="text-right">命中率</span>
         </div>
         {ranked.map((player, index) => (
@@ -141,12 +161,21 @@ export default function RankingPage() {
   );
 }
 
-function StatTile({ icon, label, value }: { icon: string; label: string; value: string }) {
+function TopPlayerCard({ title, player, value }: { title: string; player?: Ranking; value: string }) {
   return (
     <div className="rounded-2xl bg-white px-3 py-3 text-center shadow-sm">
-      <div className="mb-1 text-xl">{icon}</div>
-      <div className="text-[10px] font-semibold text-text-muted">{label}</div>
-      <div className="num mt-0.5 text-base font-black text-text-primary">{value}</div>
+      <div className="text-[10px] font-semibold text-text-muted mb-2">{title}</div>
+      {player ? (
+        <div className="flex flex-col items-center gap-1">
+          <div className="h-8 w-8">
+            <Avatar player={player} size="md" />
+          </div>
+          <div className="text-xs font-bold text-text-primary truncate max-w-full">{player.nickname}</div>
+          <div className="num text-sm font-black text-accent">{value}</div>
+        </div>
+      ) : (
+        <div className="num text-base font-black text-text-primary">{value}</div>
+      )}
     </div>
   );
 }
@@ -155,7 +184,7 @@ function RankingRow({ player, index }: { player: Ranking; index: number }) {
   const medal = ["🥇", "🥈", "🥉"][player.rank - 1];
 
   return (
-    <div className={`grid grid-cols-[42px_1fr_72px_54px] items-center border-b border-border/60 px-3 py-3 last:border-0 animate-fade-in-up stagger-${Math.min(index + 1, 5)}`}>
+    <div className={`grid grid-cols-[42px_1fr_72px_72px_54px] items-center border-b border-border/60 px-3 py-3 last:border-0 animate-fade-in-up stagger-${Math.min(index + 1, 5)}`}>
       <div className="text-sm font-black text-text-secondary">
         {medal ? <span className="text-lg">{medal}</span> : <span className="num pl-1 text-xs">{player.rank}</span>}
       </div>
@@ -169,17 +198,20 @@ function RankingRow({ player, index }: { player: Ranking; index: number }) {
       <div className={`num text-right text-sm font-black ${player.netProfit >= 0 ? "text-accent" : "text-text-secondary"}`}>
         {player.netProfit >= 0 ? "+" : ""}{Math.round(player.netProfit)}
       </div>
+      <div className="num text-right text-xs font-bold text-text-secondary">{Math.round(player.totalBetAmount)}</div>
       <div className="num text-right text-xs font-bold text-text-secondary">{player.winRate}%</div>
     </div>
   );
 }
 
 function Avatar({ player, size = "md" }: { player: Ranking; size?: "md" | "lg" }) {
-  const dimension = size === "lg" ? "h-12 w-12 text-lg" : "h-9 w-9 text-sm";
+  const dimension = size === "lg" ? "h-12 w-12" : "h-9 w-9";
+  const svgCode = multiavatar(player.nickname);
 
   return (
-    <div className={`flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-red/10 to-gold/20 font-black text-accent shadow-inner ${dimension}`}>
-      {player.avatar || player.nickname.slice(0, 1)}
-    </div>
+    <div
+      className={`shrink-0 rounded-full overflow-hidden ${dimension}`}
+      dangerouslySetInnerHTML={{ __html: svgCode }}
+    />
   );
 }
