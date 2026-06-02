@@ -1,0 +1,51 @@
+services:
+  migrate:
+    build:
+      context: .
+      target: builder
+    environment:
+      - DATABASE_URL=postgresql://hiqi:hiqi2026@db:5432/hiqi?schema=public
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123456}
+      - ADMIN_NICKNAME=${ADMIN_NICKNAME:-管理员}
+    command: sh -c "npx prisma db push && npm run db:seed"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  app:
+    build: .
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    environment:
+      - DATABASE_URL=postgresql://hiqi:hiqi2026@db:5432/hiqi?schema=public
+      - API_FOOTBALL_KEY=${API_FOOTBALL_KEY}
+      - JWT_SECRET=${JWT_SECRET:-hiqi-jwt-secret-change-in-production-2026}
+      - CRON_SECRET=${CRON_SECRET:-hiqi-cron-secret-2026}
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: hiqi
+      POSTGRES_PASSWORD: hiqi2026
+      POSTGRES_DB: hiqi
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hiqi"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  pgdata:

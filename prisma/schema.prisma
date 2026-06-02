@@ -1,0 +1,258 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================
+// 用户系统
+// ============================
+
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique @db.VarChar(20)
+  nickname  String   @db.VarChar(20)
+  avatar    String?  @db.VarChar(500)
+  role      Role     @default(PLAYER)
+  status    UserStatus @default(ACTIVE)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  wallet       Wallet?
+  transactions Transaction[]
+  bets         Bet[]
+  stats        UserStats?
+  operatedTx   Transaction[] @relation("Operator")
+
+  @@map("users")
+}
+
+enum Role {
+  ADMIN
+  PLAYER
+  @@map("role")
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+  @@map("user_status")
+}
+
+// ============================
+// 赛事与赔率
+// ============================
+
+model Tournament {
+  id        Int      @id @default(autoincrement())
+  name      String   @db.VarChar(100)
+  leagueId  Int
+  season    String   @db.Char(4)
+  startDate DateTime
+  endDate   DateTime
+  status    TournamentStatus @default(UPCOMING)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  matches Match[]
+
+  @@map("tournaments")
+}
+
+enum TournamentStatus {
+  UPCOMING
+  ACTIVE
+  FINISHED
+  @@map("tournament_status")
+}
+
+model Match {
+  id            Int       @id @default(autoincrement())
+  tournamentId  Int
+  apiMatchId    String    @unique @db.VarChar(20)
+  homeTeam      String    @db.VarChar(50)
+  awayTeam      String    @db.VarChar(50)
+  homeTeamLogo  String?   @db.VarChar(500)
+  awayTeamLogo  String?   @db.VarChar(500)
+  kickoffTime   DateTime
+  status        MatchStatus @default(UPCOMING)
+  homeScore     Int?
+  awayScore     Int?
+  oddsUpdatedAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id])
+  odds       Odds[]
+  betItems   BetItem[]
+
+  @@index([tournamentId])
+  @@index([kickoffTime])
+  @@index([status])
+  @@map("matches")
+}
+
+enum MatchStatus {
+  UPCOMING
+  LIVE
+  SEALED
+  FINISHED
+  CANCELLED
+  POSTPONED
+  @@map("match_status")
+}
+
+model Odds {
+  id        Int      @id @default(autoincrement())
+  matchId   Int
+  betType   BetType
+  optionKey String   @db.VarChar(50)
+  oddsValue Decimal  @db.Decimal(6, 2)
+  updatedAt DateTime @updatedAt
+
+  match Match @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  @@unique([matchId, betType, optionKey])
+  @@map("odds")
+}
+
+enum BetType {
+  X1X
+  HANDICAP_X1X
+  HALF_FULL
+  TOTAL_GOALS
+  CORRECT_SCORE
+  @@map("bet_type")
+}
+
+// ============================
+// 欢乐豆账户
+// ============================
+
+model Wallet {
+  id        Int     @id @default(autoincrement())
+  userId    Int     @unique
+  balance   Decimal @default(0) @db.Decimal(10, 2)
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("wallets")
+}
+
+model Transaction {
+  id           Int      @id @default(autoincrement())
+  userId       Int
+  type         TxType
+  amount       Decimal  @db.Decimal(10, 2)
+  balanceAfter Decimal  @db.Decimal(10, 2)
+  relatedBetId Int?
+  operatorId   Int?
+  remark       String?  @db.VarChar(200)
+  createdAt    DateTime @default(now())
+
+  user     User  @relation(fields: [userId], references: [id])
+  operator User? @relation("Operator", fields: [operatorId], references: [id])
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("transactions")
+}
+
+enum TxType {
+  RECHARGE
+  BET
+  WIN
+  REFUND
+  ADJUST
+  @@map("tx_type")
+}
+
+// ============================
+// 下注系统
+// ============================
+
+model Bet {
+  id              Int       @id @default(autoincrement())
+  betUid          String    @unique @db.VarChar(36)
+  userId          Int
+  betMode         BetMode
+  totalAmount     Decimal   @db.Decimal(10, 2)
+  status          BetStatus @default(PENDING_REVIEW)
+  lockedTotalOdds Decimal   @db.Decimal(8, 2)
+  potentialPayout Decimal   @db.Decimal(10, 2)
+  actualPayout    Decimal?  @db.Decimal(10, 2)
+  rejectReason    String?   @db.VarChar(200)
+  createdAt       DateTime  @default(now())
+  settledAt       DateTime?
+
+  user  User      @relation(fields: [userId], references: [id])
+  items BetItem[]
+
+  @@index([userId])
+  @@index([status])
+  @@map("bets")
+}
+
+enum BetMode {
+  SINGLE
+  PARLAY
+  @@map("bet_mode")
+}
+
+enum BetStatus {
+  PENDING_REVIEW
+  APPROVED
+  ACTIVE
+  WON
+  LOST
+  CANCELLED
+  @@map("bet_status")
+}
+
+model BetItem {
+  id             Int            @id @default(autoincrement())
+  betId          Int
+  matchId        Int
+  betMarket      BetType
+  selectedOption String         @db.VarChar(50)
+  lockedOdds     Decimal        @db.Decimal(6, 2)
+  result         BetItemResult  @default(PENDING)
+  settledAt      DateTime?
+
+  bet   Bet   @relation(fields: [betId], references: [id], onDelete: Cascade)
+  match Match @relation(fields: [matchId], references: [id])
+
+  @@index([betId])
+  @@index([matchId])
+  @@map("bet_items")
+}
+
+enum BetItemResult {
+  PENDING
+  WON
+  LOST
+  CANCELLED
+  @@map("bet_item_result")
+}
+
+// ============================
+// 排名统计（缓存表）
+// ============================
+
+model UserStats {
+  id              Int     @id @default(autoincrement())
+  userId          Int     @unique
+  totalBets       Int     @default(0)
+  totalWonBets    Int     @default(0)
+  totalBetAmount  Decimal @default(0) @db.Decimal(12, 2)
+  totalWinAmount  Decimal @default(0) @db.Decimal(12, 2)
+  netProfit       Decimal @default(0) @db.Decimal(12, 2)
+  updatedAt       DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_stats")
+}
