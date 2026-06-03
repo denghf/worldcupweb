@@ -34,15 +34,20 @@ export const POST = withAdmin(async (req: NextRequest) => {
       where: { apiMatchId: { in: apiMatchIds } },
       select: { id: true, apiMatchId: true },
     });
-    const existingMap = new Map(existing.map((m) => [m.apiMatchId, m.id]));
 
-    // Delete old odds and matches for re-import
+    // Delete old data in a transaction
     if (existing.length > 0) {
       const existingIds = existing.map((m) => m.id);
-      await prisma.betItem.deleteMany({ where: { matchId: { in: existingIds } } });
-      await prisma.bet.deleteMany({ where: { items: { none: {} } } });
-      await prisma.odds.deleteMany({ where: { matchId: { in: existingIds } } });
-      await prisma.match.deleteMany({ where: { id: { in: existingIds } } });
+      await prisma.$transaction(async (tx) => {
+        // 1. Delete bet items referencing these matches
+        await tx.betItem.deleteMany({ where: { matchId: { in: existingIds } } });
+        // 2. Delete bets that now have no items
+        await tx.bet.deleteMany({ where: { items: { none: {} } } });
+        // 3. Delete odds for these matches
+        await tx.odds.deleteMany({ where: { matchId: { in: existingIds } } });
+        // 4. Delete the matches themselves
+        await tx.match.deleteMany({ where: { id: { in: existingIds } } });
+      });
     }
 
     let imported = 0;
@@ -62,8 +67,16 @@ export const POST = withAdmin(async (req: NextRequest) => {
       });
 
       if (m.odds?.length) {
+        // Deduplicate by (betType, optionKey)
+        const seen = new Set<string>();
+        const uniqueOdds = m.odds.filter((o) => {
+          const key = `${o.betType}:${o.optionKey}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
         await prisma.odds.createMany({
-          data: m.odds.map((o) => ({
+          data: uniqueOdds.map((o) => ({
             matchId: match.id,
             betType: o.betType as "X1X" | "HANDICAP_X1X" | "HALF_FULL" | "TOTAL_GOALS" | "CORRECT_SCORE",
             optionKey: o.optionKey,
@@ -78,6 +91,6 @@ export const POST = withAdmin(async (req: NextRequest) => {
     return apiSuccess({ imported });
   } catch (e) {
     console.error("Local import error:", e);
-    return apiError("导入失败", 500);
+    return apiError("导入失败: " + (e instanceof Error ? e.message : String(e)), 500);
   }
 });
