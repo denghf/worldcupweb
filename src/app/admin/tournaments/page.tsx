@@ -51,7 +51,7 @@ export default function AdminTournamentsPage() {
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
-  const [expandedTournament, setExpandedTournament] = useState<numnumber | null>(null);
+  const [expandedTournament, setExpandedTournament] = useState<number | null>(null);
 
   // Create tournament modal
   const [showCreateTournament, setShowCreateTournament] = useState(false);
@@ -65,7 +65,7 @@ export default function AdminTournamentsPage() {
 
   // Create match modal
   const [showCreateMatch, setShowCreateMatch] = useState(false);
-  const [selectedTournamentId, setSelectedTournamentId] = useState<numnumber | null>(null);
+  const [selectedTournamentId, setSelectedTournamentId] = useState<number | null>(null);
   const [matchForm, setMatchForm] = useState({
     homeTeam: "",
     awayTeam: "",
@@ -252,12 +252,12 @@ export default function AdminTournamentsPage() {
 
   const handleSettle = async () => {
     if (!settleMatchData) return;
-    const homeScore = Numnumber(settleForm.homeScore);
-    const awayScore = Numnumber(settleForm.awayScore);
-    const halfHomeScore = settleForm.halfHomeScore === "" ? undefined : Numnumber(settleForm.halfHomeScore);
-    const halfAwayScore = settleForm.halfAwayScore === "" ? undefined : Numnumber(settleForm.halfAwayScore);
-    const finalHomeScore = settleForm.finalHomeScore === "" ? undefined : Numnumber(settleForm.finalHomeScore);
-    const finalAwayScore = settleForm.finalAwayScore === "" ? undefined : Numnumber(settleForm.finalAwayScore);
+    const homeScore = Number(settleForm.homeScore);
+    const awayScore = Number(settleForm.awayScore);
+    const halfHomeScore = settleForm.halfHomeScore === "" ? undefined : Number(settleForm.halfHomeScore);
+    const halfAwayScore = settleForm.halfAwayScore === "" ? undefined : Number(settleForm.halfAwayScore);
+    const finalHomeScore = settleForm.finalHomeScore === "" ? undefined : Number(settleForm.finalHomeScore);
+    const finalAwayScore = settleForm.finalAwayScore === "" ? undefined : Number(settleForm.finalAwayScore);
     if (isNaN(homeScore) || isNaN(awayScore)) return;
 
     const res = await fetch("/api/admin/matches/settle", {
@@ -281,7 +281,7 @@ export default function AdminTournamentsPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         ...tournamentForm,
-        leagueId: Numnumber(tournamentForm.leagueId),
+        leagueId: Number(tournamentForm.leagueId),
       }),
     });
     const data = await res.json();
@@ -534,7 +534,7 @@ export default function AdminTournamentsPage() {
                 ] as const).map(([key, label]) => (
                   <div key={key}>
                     <span className="text-sm text-text-muted block mb-1">{label}</span>
-                    <input type="numnumber" step="0.01" value={oddsForm[key] || ""} onChange={(e) => setOddsForm({ ...oddsForm, [key]: e.target.value })} className="input-field w-full rounded-lg px-3 py-2 text-sm" placeholder="0.00" />
+                    <input type="number" step="0.01" value={oddsForm[key] || ""} onChange={(e) => setOddsForm({ ...oddsForm, [key]: e.target.value })} className="input-field w-full rounded-lg px-3 py-2 text-sm" placeholder="0.00" />
                   </div>
                 ))}
               </div>
@@ -553,7 +553,7 @@ export default function AdminTournamentsPage() {
                 ] as const).map(([key, label]) => (
                   <div key={key}>
                     <span className="text-sm text-text-muted block mb-1">{label}</span>
-                    <input type="numnumber" step="0.01" value={oddsForm[key] || ""} onChange={(e) => setOddsForm({ ...oddsForm, [key]: e.target.value })} className="input-field w-full rounded-lg px-3 py-2 text-sm" placeholder="0.00" />
+                    <input type="number" step="0.01" value={oddsForm[key] || ""} onChange={(e) => setOddsForm({ ...oddsForm, [key]: e.target.value })} className="input-field w-full rounded-lg px-3 py-2 text-sm" placeholder="0.00" />
                   </div>
                 ))}
               </div>
@@ -570,7 +570,7 @@ export default function AdminTournamentsPage() {
                 ] as const).map(([key, label]) => (
                   <div key={key}>
                     <span className="text-sm text-text-muted block mb-1">{label}</span>
-                    <input type="numnumber" step="0.01" value={oddsForm[key] || ""} onChange={(e) => setOddsForm({ ...oddsForm, [key]: e.target.value })} className="input-field w-full rounded-lg px-3 py-2 text-sm" placeholder="0.00" />
+                    <input type="number" step="0.01" value={oddsForm[key] || ""} onChange={(e) => setOddsForm({ ...oddsForm, [key]: e.target.value })} className="input-field w-full rounded-lg px-3 py-2 text-sm" placeholder="0.00" />
                   </div>
                 ))}
               </div>
@@ -586,7 +586,7 @@ export default function AdminTournamentsPage() {
                 ] as const).map(([key, label]) => (
                   <div key={key}>
                     <span className="text-sm text-text-muted block mb-1">{label}</span>
-                    <input type="numnumber" step="0.01" value={oddsForm[key] || ""} onChange={(e) => setOddsForm({ ...oddsForm, [key]: e.target.value })} className="input-field w-full rounded-lg px-3 py-2 text-sm" placeholder="0.00" />
+                    <input type="number" step="0.01" value={oddsForm[key] || ""} onChange={(e) => setOddsForm({ ...oddsForm, [key]: e.target.value })} className="input-field w-full rounded-lg px-3 py-2 text-sm" placeholder="0.00" />
                   </div>
                 ))}
               </div>
@@ -605,7 +605,7 @@ export default function AdminTournamentsPage() {
                   ] as const).map(([key, label]) => (
                     <div key={key}>
                       <span className="text-sm text-text-muted block mb-0.5">{label}</span>
-                      <input type="numnumber" step="0.01" value={oddsForm[key] || ""} onChange={(e) => setOddsForm({ ...oddsForm, [key]: e.target.value })} className="input-field w-full rounded px-2 py-1.5 text-sm" placeholder="0.00" />
+                      <input type="number" step="0.01" value={oddsForm[key] || ""} onChange={(e) => setOddsForm({ ...oddsForm, [key]: e.target.value })} className="input-field w-full rounded px-2 py-1.5 text-sm" placeholder="0.00" />
                     </div>
                   ))}
                 </div>
@@ -616,7 +616,7 @@ export default function AdminTournamentsPage() {
                   ] as const).map(([key, label]) => (
                     <div key={key}>
                       <span className="text-sm text-text-muted block mb-0.5">{label}</span>
-                      <input type="numnumber" step="0.01" value={oddsForm[key] || ""} onChange={(e) => setOddsForm({ ...oddsForm, [key]: e.target.value })} className="input-field w-full rounded px-2 py-1.5 text-sm" placeholder="0.00" />
+                      <input type="number" step="0.01" value={oddsForm[key] || ""} onChange={(e) => setOddsForm({ ...oddsForm, [key]: e.target.value })} className="input-field w-full rounded px-2 py-1.5 text-sm" placeholder="0.00" />
                     </div>
                   ))}
                 </div>
@@ -629,7 +629,7 @@ export default function AdminTournamentsPage() {
                   ] as const).map(([key, label]) => (
                     <div key={key}>
                       <span className="text-sm text-text-muted block mb-0.5">{label}</span>
-                      <input type="numnumber" step="0.01" value={oddsForm[key] || ""} onChange={(e) => setOddsForm({ ...oddsForm, [key]: e.target.value })} className="input-field w-full rounded px-2 py-1.5 text-sm" placeholder="0.00" />
+                      <input type="number" step="0.01" value={oddsForm[key] || ""} onChange={(e) => setOddsForm({ ...oddsForm, [key]: e.target.value })} className="input-field w-full rounded px-2 py-1.5 text-sm" placeholder="0.00" />
                     </div>
                   ))}
                 </div>
@@ -639,7 +639,7 @@ export default function AdminTournamentsPage() {
                   ] as const).map(([key, label]) => (
                     <div key={key}>
                       <span className="text-sm text-text-muted block mb-0.5">{label}</span>
-                      <input type="numnumber" step="0.01" value={oddsForm[key] || ""} onChange={(e) => setOddsForm({ ...oddsForm, [key]: e.target.value })} className="input-field w-full rounded px-2 py-1.5 text-sm" placeholder="0.00" />
+                      <input type="number" step="0.01" value={oddsForm[key] || ""} onChange={(e) => setOddsForm({ ...oddsForm, [key]: e.target.value })} className="input-field w-full rounded px-2 py-1.5 text-sm" placeholder="0.00" />
                     </div>
                   ))}
                 </div>
@@ -662,11 +662,11 @@ export default function AdminTournamentsPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-text-secondary text-sm mb-1.5 block">{settleMatchData.homeTeam}</label>
-                  <input type="numnumber" value={settleForm.halfHomeScore} onChange={(e) => setSettleForm({ ...settleForm, halfHomeScore: e.target.value })} className="input-field w-full rounded-xl px-4 py-3 text-sm" placeholder="0" />
+                  <input type="number" value={settleForm.halfHomeScore} onChange={(e) => setSettleForm({ ...settleForm, halfHomeScore: e.target.value })} className="input-field w-full rounded-xl px-4 py-3 text-sm" placeholder="0" />
                 </div>
                 <div>
                   <label className="text-text-secondary text-sm mb-1.5 block">{settleMatchData.awayTeam}</label>
-                  <input type="numnumber" value={settleForm.halfAwayScore} onChange={(e) => setSettleForm({ ...settleForm, halfAwayScore: e.target.value })} className="input-field w-full rounded-xl px-4 py-3 text-sm" placeholder="0" />
+                  <input type="number" value={settleForm.halfAwayScore} onChange={(e) => setSettleForm({ ...settleForm, halfAwayScore: e.target.value })} className="input-field w-full rounded-xl px-4 py-3 text-sm" placeholder="0" />
                 </div>
               </div>
             </div>
@@ -675,11 +675,11 @@ export default function AdminTournamentsPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-text-secondary text-sm mb-1.5 block">{settleMatchData.homeTeam}</label>
-                  <input type="numnumber" value={settleForm.homeScore} onChange={(e) => setSettleForm({ ...settleForm, homeScore: e.target.value })} className="input-field w-full rounded-xl px-4 py-3 text-sm" placeholder="0" />
+                  <input type="number" value={settleForm.homeScore} onChange={(e) => setSettleForm({ ...settleForm, homeScore: e.target.value })} className="input-field w-full rounded-xl px-4 py-3 text-sm" placeholder="0" />
                 </div>
                 <div>
                   <label className="text-text-secondary text-sm mb-1.5 block">{settleMatchData.awayTeam}</label>
-                  <input type="numnumber" value={settleForm.awayScore} onChange={(e) => setSettleForm({ ...settleForm, awayScore: e.target.value })} className="input-field w-full rounded-xl px-4 py-3 text-sm" placeholder="0" />
+                  <input type="number" value={settleForm.awayScore} onChange={(e) => setSettleForm({ ...settleForm, awayScore: e.target.value })} className="input-field w-full rounded-xl px-4 py-3 text-sm" placeholder="0" />
                 </div>
               </div>
             </div>
@@ -688,11 +688,11 @@ export default function AdminTournamentsPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-text-secondary text-sm mb-1.5 block">{settleMatchData.homeTeam}</label>
-                  <input type="numnumber" value={settleForm.finalHomeScore} onChange={(e) => setSettleForm({ ...settleForm, finalHomeScore: e.target.value })} className="input-field w-full rounded-xl px-4 py-3 text-sm" placeholder="可选" />
+                  <input type="number" value={settleForm.finalHomeScore} onChange={(e) => setSettleForm({ ...settleForm, finalHomeScore: e.target.value })} className="input-field w-full rounded-xl px-4 py-3 text-sm" placeholder="可选" />
                 </div>
                 <div>
                   <label className="text-text-secondary text-sm mb-1.5 block">{settleMatchData.awayTeam}</label>
-                  <input type="numnumber" value={settleForm.finalAwayScore} onChange={(e) => setSettleForm({ ...settleForm, finalAwayScore: e.target.value })} className="input-field w-full rounded-xl px-4 py-3 text-sm" placeholder="可选" />
+                  <input type="number" value={settleForm.finalAwayScore} onChange={(e) => setSettleForm({ ...settleForm, finalAwayScore: e.target.value })} className="input-field w-full rounded-xl px-4 py-3 text-sm" placeholder="可选" />
                 </div>
               </div>
             </div>
@@ -716,7 +716,7 @@ export default function AdminTournamentsPage() {
               <label className="text-text-secondary text-sm mb-1.5 block">导入到赛事</label>
               <select
                 value={selectedTournamentId || ""}
-                onChange={(e) => setSelectedTournamentId(Numnumber(e.target.value) || null)}
+                onChange={(e) => setSelectedTournamentId(Number(e.target.value) || null)}
                 className="input-field w-full rounded-xl px-4 py-3 text-sm"
               >
                 <option value="">选择赛事...</option>
