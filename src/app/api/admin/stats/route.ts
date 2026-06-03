@@ -19,8 +19,8 @@ export const GET = withAdmin(async () => {
     prisma.bet.aggregate({ _sum: { totalAmount: true } }),
     prisma.bet.aggregate({ _sum: { actualPayout: true } }),
     prisma.user.count({ where: { role: "PLAYER" } }),
-    prisma.bet.count({ where: { status: "PENDING_REVIEW" } }),
-    prisma.bet.count({ where: { status: "ACTIVE" } }),
+    prisma.bet.count({ where: { status: "APPROVED" } }),
+    prisma.bet.count({ where: { status: "APPROVED" } }),
     prisma.bet.count({ where: { status: "WON" } }),
     prisma.bet.count({ where: { status: "LOST" } }),
     prisma.userStats.findMany({

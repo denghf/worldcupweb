@@ -75,7 +75,7 @@ export default function AdminDashboard() {
           <div className="glass rounded-xl overflow-hidden">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border text-text-muted text-xs">
+                <tr className="border-b border-border text-text-muted text-sm">
                   <th className="text-left py-2.5 px-4 font-medium">排名</th>
                   <th className="text-left py-2.5 px-4 font-medium">昵称</th>
                   <th className="text-right py-2.5 px-4 font-medium">下注数</th>
@@ -89,12 +89,12 @@ export default function AdminDashboard() {
                       {i < 3 ? (
                         <span>{["🥇", "🥈", "🥉"][i]}</span>
                       ) : (
-                        <span className="num text-text-muted">{i + 1}</span>
+                        <span className="text-text-muted">{i + 1}</span>
                       )}
                     </td>
                     <td className="py-2.5 px-4">{user.nickname}</td>
-                    <td className="py-2.5 px-4 text-right num">{user.totalBets}</td>
-                    <td className={`py-2.5 px-4 text-right num font-medium ${user.netProfit >= 0 ? "text-accent" : "text-red"}`}>
+                    <td className="py-2.5 px-4 text-right">{user.totalBets}</td>
+                    <td className={`py-2.5 px-4 text-right font-medium ${user.netProfit >= 0 ? "text-accent" : "text-red"}`}>
                       {user.netProfit >= 0 ? "+" : ""}{Math.round(user.netProfit)}
                     </td>
                   </tr>
@@ -124,9 +124,9 @@ function StatCard({
       {pulse && (
         <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-gold animate-pulse" />
       )}
-      <div className="text-text-muted text-xs mb-1">{label}</div>
+      <div className="text-text-muted text-sm mb-1">{label}</div>
       <div
-        className={`num text-xl font-bold ${
+        className={`text-xl font-bold ${
           color === "accent" ? "text-accent" : color === "gold" ? "text-gold" : color === "red" ? "text-red" : "text-text-primary"
         }`}
       >

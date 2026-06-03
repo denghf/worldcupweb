@@ -8,6 +8,8 @@ interface Player {
   nickname: string;
   status: string;
   totalBets: number;
+  totalBetAmount: number;
+  totalWonBets: number;
   netProfit: number;
 }
 
@@ -138,7 +140,7 @@ export default function PlayersPage() {
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="font-display text-lg font-semibold">玩家管理</h2>
-          <p className="text-text-muted text-xs mt-1">管理参与下注的玩家</p>
+          <p className="text-text-muted text-sm mt-1">管理参与下注的玩家</p>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-text-muted text-sm">{players.length} 位玩家</span>
@@ -152,7 +154,7 @@ export default function PlayersPage() {
         <div className="glass rounded-xl p-4 mb-4 animate-fade-in-up">
           <div className="grid grid-cols-2 gap-3 mb-3">
             <div>
-              <label className="text-xs text-text-secondary mb-1 block">用户名</label>
+              <label className="text-sm text-text-secondary mb-1 block">用户名</label>
               <input
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
@@ -161,7 +163,7 @@ export default function PlayersPage() {
               />
             </div>
             <div>
-              <label className="text-xs text-text-secondary mb-1 block">昵称</label>
+              <label className="text-sm text-text-secondary mb-1 block">昵称</label>
               <input
                 value={nickname}
                 onChange={(e) => setNickname(e.target.value)}
@@ -186,10 +188,12 @@ export default function PlayersPage() {
         <div className="glass rounded-xl overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-border text-text-muted text-xs">
+              <tr className="border-b border-border text-text-muted text-sm">
                 <th className="text-left py-3 px-4 font-medium">玩家</th>
                 <th className="text-center py-3 px-4 font-medium">状态</th>
                 <th className="text-right py-3 px-4 font-medium">下注数</th>
+                <th className="text-right py-3 px-4 font-medium">下注总额</th>
+                <th className="text-right py-3 px-4 font-medium">中奖数</th>
                 <th className="text-right py-3 px-4 font-medium">盈亏</th>
                 <th className="text-right py-3 px-4 font-medium">操作</th>
               </tr>
@@ -212,13 +216,13 @@ export default function PlayersPage() {
                         />
                         <button
                           onClick={() => saveEdit(player)}
-                          className="text-xs text-accent hover:underline"
+                          className="text-sm text-accent hover:underline"
                         >
                           保存
                         </button>
                         <button
                           onClick={cancelEdit}
-                          className="text-xs text-text-muted hover:underline"
+                          className="text-sm text-text-muted hover:underline"
                         >
                           取消
                         </button>
@@ -232,32 +236,30 @@ export default function PlayersPage() {
                         {player.nickname}
                       </span>
                     )}
-                    <div className="text-text-muted text-[10px]">@{player.username}</div>
+                    <div className="text-text-muted text-sm">@{player.username}</div>
                   </td>
                   <td className="py-3 px-4 text-center">
-                    <span
-                      className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-                        player.status === "ACTIVE" ? "bg-accent/15 text-accent" : "bg-red/10 text-red"
-                      }`}
-                    >
+                    <span className="text-sm font-medium text-text-primary">
                       {player.status === "ACTIVE" ? "正常" : "禁用"}
                     </span>
                   </td>
-                  <td className="py-3 px-4 text-right num text-text-secondary">{player.totalBets}</td>
-                  <td className={`py-3 px-4 text-right num font-medium ${player.netProfit >= 0 ? "text-accent" : "text-red"}`}>
+                  <td className="py-3 px-4 text-right text-text-secondary">{player.totalBets}</td>
+                  <td className="py-3 px-4 text-right text-text-secondary">{player.totalBetAmount}</td>
+                  <td className="py-3 px-4 text-right text-text-secondary">{player.totalWonBets}</td>
+                  <td className={`py-3 px-4 text-right font-medium ${player.netProfit >= 0 ? "text-accent" : "text-red"}`}>
                     {player.netProfit >= 0 ? "+" : ""}{player.netProfit}
                   </td>
                   <td className="py-3 px-4 text-right">
                     <div className="flex items-center justify-end gap-1.5">
                       <button
                         onClick={() => startEdit(player)}
-                        className="text-xs px-2.5 py-1 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
+                        className="text-sm px-2.5 py-1 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
                       >
                         改名
                       </button>
                       <button
                         onClick={() => toggleStatus(player)}
-                        className={`text-xs px-2.5 py-1 rounded transition-colors ${
+                        className={`text-sm px-2.5 py-1 rounded transition-colors ${
                           player.status === "ACTIVE"
                             ? "bg-red/10 text-red hover:bg-red/20"
                             : "bg-accent/10 text-accent hover:bg-accent/20"
@@ -267,7 +269,7 @@ export default function PlayersPage() {
                       </button>
                       <button
                         onClick={() => setDeleteTarget(player)}
-                        className="text-xs px-2.5 py-1 rounded bg-red/10 text-red hover:bg-red/20 transition-colors"
+                        className="text-sm px-2.5 py-1 rounded bg-red/10 text-red hover:bg-red/20 transition-colors"
                       >
                         删除
                       </button>
@@ -289,7 +291,7 @@ export default function PlayersPage() {
               确定要删除玩家 <span className="text-text-primary font-medium">{deleteTarget.nickname}</span>
               <span className="text-text-muted"> (@{deleteTarget.username})</span> 吗？
             </p>
-            <p className="text-red text-xs mb-5">此操作不可撤销，该玩家的所有下注和交易记录将被永久删除。</p>
+            <p className="text-red text-sm mb-5">此操作不可撤销，该玩家的所有下注和交易记录将被永久删除。</p>
             <div className="flex gap-3">
               <button
                 onClick={() => setDeleteTarget(null)}

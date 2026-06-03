@@ -41,6 +41,8 @@ export const GET = withAdmin(async () => {
     id: bet.id,
     betUid: bet.betUid,
     nickname: bet.user.nickname,
+    betAmount: Number(bet.totalAmount),
+    lockedTotalOdds: Number(bet.lockedTotalOdds),
     winAmount: Number(bet.actualPayout ?? 0),
     match: bet.items.map((it) => `${it.match.homeTeam} vs ${it.match.awayTeam}`).join(" · "),
     option: bet.items.map((it) => `${MARKET_NAMES[it.betMarket] || it.betMarket} ${formatOptionLabel(it.betMarket, it.selectedOption)}`).join(" + "),

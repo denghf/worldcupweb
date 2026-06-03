@@ -3,37 +3,37 @@
 import { useState, useEffect } from "react";
 
 interface Tournament {
-  id: number;
+  id:ber;
   name: string;
-  leagueId: number;
+  leagueId:ber;
   season: string;
   startDate: string;
   endDate: string;
   status: string;
-  _count: { matches: number };
+  _count: { matches:ber };
 }
 
 interface Match {
-  id: number;
-  tournamentId: number;
+  id:ber;
+  tournamentId:ber;
   homeTeam: string;
   awayTeam: string;
   homeTeamLogo: string | null;
   awayTeamLogo: string | null;
   kickoffTime: string;
   status: string;
-  homeScore: number | null;
-  awayScore: number | null;
-  halfHomeScore: number | null;
-  halfAwayScore: number | null;
-  finalHomeScore: number | null;
-  finalAwayScore: number | null;
+  homeScore:ber | null;
+  awayScore:ber | null;
+  halfHomeScore:ber | null;
+  halfAwayScore:ber | null;
+  finalHomeScore:ber | null;
+  finalAwayScore:ber | null;
   odds: {
-    x1x: Record<string, number>;
-    handicapX1x: Record<string, number>;
-    halfFull: { label: string; value: number }[];
-    totalGoals: { label: string; value: number }[];
-    correctScore: { label: string; value: number }[];
+    x1x: Record<string,ber>;
+    handicapX1x: Record<string,ber>;
+    halfFull: { label: string; value:ber }[];
+    totalGoals: { label: string; value:ber }[];
+    correctScore: { label: string; value:ber }[];
   };
 }
 
@@ -43,8 +43,8 @@ interface LocalMatch {
   homeTeam: string;
   awayTeam: string;
   kickoffTime: string;
-  handicap?: number;
-  odds: { betType: string; optionKey: string; oddsValue: number }[];
+  handicap?:ber;
+  odds: { betType: string; optionKey: string; oddsValue:ber }[];
 }
 
 export default function AdminTournamentsPage() {
@@ -106,7 +106,7 @@ export default function AdminTournamentsPage() {
     setLoading(false);
   }
 
-  const getMatchesForTournament = (tournamentId: number) =>
+  const getMatchesForTournament = (tournamentId:ber) =>
     matches
       .filter((m) => m.tournamentId === tournamentId)
       .sort((a, b) => new Date(a.kickoffTime).getTime() - new Date(b.kickoffTime).getTime());
@@ -196,7 +196,7 @@ export default function AdminTournamentsPage() {
 
   const saveOdds = async () => {
     if (!selectedMatch) return;
-    const odds: { betType: string; optionKey: string; oddsValue: number }[] = [];
+    const odds: { betType: string; optionKey: string; oddsValue:ber }[] = [];
 
     // X1X
     for (const [key, optKey] of [["x1xHome", "home"], ["x1xDraw", "draw"], ["x1xAway", "away"]] as const) {
@@ -320,18 +320,18 @@ export default function AdminTournamentsPage() {
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="font-display text-lg font-semibold">赛事管理</h2>
-          <p className="text-text-muted text-xs mt-1">管理赛事、比赛和赔率</p>
+          <p className="text-text-muted text-sm mt-1">管理赛事、比赛和赔率</p>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowImport(true)}
-            className="px-4 py-2 rounded-lg text-xs bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
+            className="px-4 py-2 rounded-lg text-sm bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
           >
             从本地数据导入
           </button>
           <button
             onClick={() => setShowCreateTournament(true)}
-            className="btn-primary px-4 py-2 rounded-lg text-xs"
+            className="btn-primary px-4 py-2 rounded-lg text-sm"
           >
             + 新建赛事
           </button>
@@ -353,19 +353,19 @@ export default function AdminTournamentsPage() {
                 >
                   <div>
                     <h3 className="font-medium text-sm">{t.name}</h3>
-                    <div className="flex items-center gap-3 mt-1 text-xs text-text-secondary">
+                    <div className="flex items-center gap-3 mt-1 text-sm text-text-secondary">
                       <span>League ID: {t.leagueId}</span>
                       <span>赛季: {t.season}</span>
                       <span>{t.startDate.slice(0, 10)} ~ {t.endDate.slice(0, 10)}</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                    <span className={`text-sm px-2 py-0.5 rounded-full font-medium ${
                       t.status === "ACTIVE" ? "bg-accent/15 text-accent" : "text-text-muted bg-bg-elevated"
                     }`}>
                       {t.status === "ACTIVE" ? "进行中" : t.status === "UPCOMING" ? "未开始" : "已结束"}
                     </span>
-                    <span className="text-text-muted text-xs">{tMatches.length}场</span>
+                    <span className="text-text-muted text-sm">{tMatches.length}场</span>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`text-text-muted transition-transform ${isExpanded ? "rotate-180" : ""}`}>
                       <path d="M6 9l6 6 6-6" />
                     </svg>
@@ -375,16 +375,16 @@ export default function AdminTournamentsPage() {
                 {isExpanded && (
                   <div className="px-5 pb-4 border-t border-border">
                     <div className="flex items-center justify-between py-3">
-                      <span className="text-xs text-text-secondary">比赛列表</span>
+                      <span className="text-sm text-text-secondary">比赛列表</span>
                       <button
                         onClick={() => { setSelectedTournamentId(t.id); setShowCreateMatch(true); }}
-                        className="text-xs bg-accent/10 text-accent px-2.5 py-1 rounded-lg hover:bg-accent/20 transition-colors"
+                        className="text-sm bg-accent/10 text-accent px-2.5 py-1 rounded-lg hover:bg-accent/20 transition-colors"
                       >
                         + 手动添加比赛
                       </button>
                     </div>
                     {tMatches.length === 0 ? (
-                      <div className="text-text-muted text-xs py-2">暂无比赛</div>
+                      <div className="text-text-muted text-sm py-2">暂无比赛</div>
                     ) : (
                       <div className="space-y-2">
                         {tMatches.map((m) => {
@@ -395,13 +395,13 @@ export default function AdminTournamentsPage() {
                           return (
                             <div key={m.id} className="bg-bg-primary rounded-lg px-3 py-2.5 flex items-center justify-between">
                               <div className="flex items-center gap-2 flex-1 min-w-0">
-                                <span className="text-xs text-text-muted whitespace-nowrap">{timeStr}</span>
-                                <span className="text-xs font-medium truncate">{m.homeTeam} vs {m.awayTeam}</span>
+                                <span className="text-sm text-text-muted whitespace-nowrap">{timeStr}</span>
+                                <span className="text-sm font-medium truncate">{m.homeTeam} vs {m.awayTeam}</span>
                                 {m.status === "UPCOMING" && (
-                                  <span className="text-[10px] bg-accent/10 text-accent px-1.5 py-0.5 rounded">未开赛</span>
+                                  <span className="text-sm bg-accent/10 text-accent px-1.5 py-0.5 rounded">未开赛</span>
                                 )}
                                 {m.status === "FINISHED" && m.homeScore !== null && (
-                                  <span className="text-xs num font-semibold">
+                                  <span className="text-sm font-semibold">
                                     {m.homeScore}:{m.awayScore}
                                     {m.finalHomeScore !== null && m.finalAwayScore !== null &&
                                       (m.finalHomeScore !== m.homeScore || m.finalAwayScore !== m.awayScore) && (
@@ -410,14 +410,14 @@ export default function AdminTournamentsPage() {
                                   </span>
                                 )}
                                 {hasOdds && (
-                                  <span className="text-[10px] bg-green/10 text-green px-1.5 py-0.5 rounded">已设赔率</span>
+                                  <span className="text-sm bg-green/10 text-green px-1.5 py-0.5 rounded">已设赔率</span>
                                 )}
                               </div>
                               <div className="flex items-center gap-1.5 ml-2 shrink-0">
                                 {!isFinished && (
                                   <button
                                     onClick={() => openOddsModal(m)}
-                                    className="text-[10px] px-2 py-1 rounded bg-bg-elevated text-text-secondary hover:text-text-primary transition-colors"
+                                    className="text-sm px-2 py-1 rounded bg-bg-elevated text-text-secondary hover:text-text-primary transition-colors"
                                   >
                                     {hasOdds ? "编辑赔率" : "设置赔率"}
                                   </button>
@@ -435,7 +435,7 @@ export default function AdminTournamentsPage() {
                                     });
                                     setShowSettle(true);
                                   }}
-                                  className="text-[10px] px-2 py-1 rounded bg-gold/10 text-gold hover:bg-gold/20 transition-colors"
+                                  className="text-sm px-2 py-1 rounded bg-gold/10 text-gold hover:bg-gold/20 transition-colors"
                                 >
                                   {isFinished ? "修改结算" : "结算"}
                                 </button>
@@ -458,26 +458,26 @@ export default function AdminTournamentsPage() {
         <Modal onClose={() => setShowCreateTournament(false)} title="新建赛事">
           <div className="space-y-3">
             <div>
-              <label className="text-text-secondary text-xs mb-1.5 block">赛事名称</label>
+              <label className="text-text-secondary text-sm mb-1.5 block">赛事名称</label>
               <input value={tournamentForm.name} onChange={(e) => setTournamentForm({ ...tournamentForm, name: e.target.value })} placeholder="如：2026 FIFA 世界杯" className="input-field w-full rounded-xl px-4 py-3 text-sm" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-text-secondary text-xs mb-1.5 block">League ID</label>
+                <label className="text-text-secondary text-sm mb-1.5 block">League ID</label>
                 <input value={tournamentForm.leagueId} onChange={(e) => setTournamentForm({ ...tournamentForm, leagueId: e.target.value })} placeholder="1" className="input-field w-full rounded-xl px-4 py-3 text-sm" />
               </div>
               <div>
-                <label className="text-text-secondary text-xs mb-1.5 block">赛季</label>
+                <label className="text-text-secondary text-sm mb-1.5 block">赛季</label>
                 <input value={tournamentForm.season} onChange={(e) => setTournamentForm({ ...tournamentForm, season: e.target.value })} placeholder="2026" className="input-field w-full rounded-xl px-4 py-3 text-sm" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-text-secondary text-xs mb-1.5 block">开始日期</label>
+                <label className="text-text-secondary text-sm mb-1.5 block">开始日期</label>
                 <input type="date" value={tournamentForm.startDate} onChange={(e) => setTournamentForm({ ...tournamentForm, startDate: e.target.value })} className="input-field w-full rounded-xl px-4 py-3 text-sm" />
               </div>
               <div>
-                <label className="text-text-secondary text-xs mb-1.5 block">结束日期</label>
+                <label className="text-text-secondary text-sm mb-1.5 block">结束日期</label>
                 <input type="date" value={tournamentForm.endDate} onChange={(e) => setTournamentForm({ ...tournamentForm, endDate: e.target.value })} className="input-field w-full rounded-xl px-4 py-3 text-sm" />
               </div>
             </div>
@@ -498,16 +498,16 @@ export default function AdminTournamentsPage() {
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-text-secondary text-xs mb-1.5 block">主队</label>
+                <label className="text-text-secondary text-sm mb-1.5 block">主队</label>
                 <input value={matchForm.homeTeam} onChange={(e) => setMatchForm({ ...matchForm, homeTeam: e.target.value })} placeholder="如：巴西" className="input-field w-full rounded-xl px-4 py-3 text-sm" />
               </div>
               <div>
-                <label className="text-text-secondary text-xs mb-1.5 block">客队</label>
+                <label className="text-text-secondary text-sm mb-1.5 block">客队</label>
                 <input value={matchForm.awayTeam} onChange={(e) => setMatchForm({ ...matchForm, awayTeam: e.target.value })} placeholder="如：德国" className="input-field w-full rounded-xl px-4 py-3 text-sm" />
               </div>
             </div>
             <div>
-              <label className="text-text-secondary text-xs mb-1.5 block">开赛时间</label>
+              <label className="text-text-secondary text-sm mb-1.5 block">开赛时间</label>
               <input type="datetime-local" value={matchForm.kickoffTime} onChange={(e) => setMatchForm({ ...matchForm, kickoffTime: e.target.value })} className="input-field w-full rounded-xl px-4 py-3 text-sm" />
             </div>
             <button
@@ -527,14 +527,14 @@ export default function AdminTournamentsPage() {
           <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
             {/* X1X */}
             <div>
-              <label className="text-xs text-text-secondary mb-2 block font-medium">胜负 (X1X)</label>
+              <label className="text-sm text-text-secondary mb-2 block font-medium">胜负 (X1X)</label>
               <div className="grid grid-cols-3 gap-2">
                 {([
                   ["x1xHome", "主胜"], ["x1xDraw", "平局"], ["x1xAway", "客胜"],
                 ] as const).map(([key, label]) => (
                   <div key={key}>
-                    <span className="text-[10px] text-text-muted block mb-1">{label}</span>
-                    <input type="number" step="0.01" value={oddsForm[key] || ""} onChange={(e) => setOddsForm({ ...oddsForm, [key]: e.target.value })} className="input-field w-full rounded-lg px-3 py-2 text-sm num" placeholder="0.00" />
+                    <span className="text-sm text-text-muted block mb-1">{label}</span>
+                    <input type="number" step="0.01" value={oddsForm[key] || ""} onChange={(e) => setOddsForm({ ...oddsForm, [key]: e.target.value })} className="input-field w-full rounded-lg px-3 py-2 text-sm" placeholder="0.00" />
                   </div>
                 ))}
               </div>
@@ -542,18 +542,18 @@ export default function AdminTournamentsPage() {
 
             {/* Handicap X1X */}
             <div>
-              <label className="text-xs text-text-secondary mb-2 block font-medium">让球胜平负 (HANDICAP)</label>
+              <label className="text-sm text-text-secondary mb-2 block font-medium">让球胜平负 (HANDICAP)</label>
               <div className="mb-2 flex items-center">
-                <span className="text-[10px] text-text-muted">让球值</span>
-                <input type="text" value={oddsForm.hcValue || ""} onChange={(e) => setOddsForm({ ...oddsForm, hcValue: e.target.value })} className="input-field w-20 rounded-lg px-2 py-1.5 text-sm num ml-2" placeholder="-1" />
+                <span className="text-sm text-text-muted">让球值</span>
+                <input type="text" value={oddsForm.hcValue || ""} onChange={(e) => setOddsForm({ ...oddsForm, hcValue: e.target.value })} className="input-field w-20 rounded-lg px-2 py-1.5 text-sm ml-2" placeholder="-1" />
               </div>
               <div className="grid grid-cols-3 gap-2">
                 {([
                   ["hcHome", "主胜"], ["hcDraw", "平局"], ["hcAway", "客胜"],
                 ] as const).map(([key, label]) => (
                   <div key={key}>
-                    <span className="text-[10px] text-text-muted block mb-1">{label}</span>
-                    <input type="number" step="0.01" value={oddsForm[key] || ""} onChange={(e) => setOddsForm({ ...oddsForm, [key]: e.target.value })} className="input-field w-full rounded-lg px-3 py-2 text-sm num" placeholder="0.00" />
+                    <span className="text-sm text-text-muted block mb-1">{label}</span>
+                    <input type="number" step="0.01" value={oddsForm[key] || ""} onChange={(e) => setOddsForm({ ...oddsForm, [key]: e.target.value })} className="input-field w-full rounded-lg px-3 py-2 text-sm" placeholder="0.00" />
                   </div>
                 ))}
               </div>
@@ -561,7 +561,7 @@ export default function AdminTournamentsPage() {
 
             {/* Half/Full */}
             <div>
-              <label className="text-xs text-text-secondary mb-2 block font-medium">半全场</label>
+              <label className="text-sm text-text-secondary mb-2 block font-medium">半全场</label>
               <div className="grid grid-cols-3 gap-2">
                 {([
                   ["hf_胜胜", "胜-胜"], ["hf_胜平", "胜-平"], ["hf_胜负", "胜-负"],
@@ -569,8 +569,8 @@ export default function AdminTournamentsPage() {
                   ["hf_负胜", "负-胜"], ["hf_负平", "负-平"], ["hf_负负", "负-负"],
                 ] as const).map(([key, label]) => (
                   <div key={key}>
-                    <span className="text-[10px] text-text-muted block mb-1">{label}</span>
-                    <input type="number" step="0.01" value={oddsForm[key] || ""} onChange={(e) => setOddsForm({ ...oddsForm, [key]: e.target.value })} className="input-field w-full rounded-lg px-3 py-2 text-sm num" placeholder="0.00" />
+                    <span className="text-sm text-text-muted block mb-1">{label}</span>
+                    <input type="number" step="0.01" value={oddsForm[key] || ""} onChange={(e) => setOddsForm({ ...oddsForm, [key]: e.target.value })} className="input-field w-full rounded-lg px-3 py-2 text-sm" placeholder="0.00" />
                   </div>
                 ))}
               </div>
@@ -578,15 +578,15 @@ export default function AdminTournamentsPage() {
 
             {/* Total Goals */}
             <div>
-              <label className="text-xs text-text-secondary mb-2 block font-medium">总进球数</label>
+              <label className="text-sm text-text-secondary mb-2 block font-medium">总进球数</label>
               <div className="grid grid-cols-4 gap-2">
                 {([
                   ["tg_0球", "0球"], ["tg_1球", "1球"], ["tg_2球", "2球"], ["tg_3球", "3球"],
                   ["tg_4球", "4球"], ["tg_5球", "5球"], ["tg_6球", "6球"], ["tg_7+", "7+"],
                 ] as const).map(([key, label]) => (
                   <div key={key}>
-                    <span className="text-[10px] text-text-muted block mb-1">{label}</span>
-                    <input type="number" step="0.01" value={oddsForm[key] || ""} onChange={(e) => setOddsForm({ ...oddsForm, [key]: e.target.value })} className="input-field w-full rounded-lg px-3 py-2 text-sm num" placeholder="0.00" />
+                    <span className="text-sm text-text-muted block mb-1">{label}</span>
+                    <input type="number" step="0.01" value={oddsForm[key] || ""} onChange={(e) => setOddsForm({ ...oddsForm, [key]: e.target.value })} className="input-field w-full rounded-lg px-3 py-2 text-sm" placeholder="0.00" />
                   </div>
                 ))}
               </div>
@@ -594,9 +594,9 @@ export default function AdminTournamentsPage() {
 
             {/* Correct Score */}
             <div>
-              <label className="text-xs text-text-secondary mb-2 block font-medium">猜比分</label>
+              <label className="text-sm text-text-secondary mb-2 block font-medium">猜比分</label>
               <div className="space-y-1.5">
-                <span className="text-[10px] text-accent">主胜</span>
+                <span className="text-sm text-accent">主胜</span>
                 <div className="grid grid-cols-6 gap-1.5">
                   {([
                     ["cs_1:0", "1:0"], ["cs_2:0", "2:0"], ["cs_2:1", "2:1"], ["cs_3:0", "3:0"],
@@ -604,23 +604,23 @@ export default function AdminTournamentsPage() {
                     ["cs_4:2", "4:2"], ["cs_5:0", "5:0"], ["cs_5:1", "5:1"], ["cs_5:2", "5:2"],
                   ] as const).map(([key, label]) => (
                     <div key={key}>
-                      <span className="text-[10px] text-text-muted block mb-0.5">{label}</span>
-                      <input type="number" step="0.01" value={oddsForm[key] || ""} onChange={(e) => setOddsForm({ ...oddsForm, [key]: e.target.value })} className="input-field w-full rounded px-2 py-1.5 text-xs num" placeholder="0.00" />
+                      <span className="text-sm text-text-muted block mb-0.5">{label}</span>
+                      <input type="number" step="0.01" value={oddsForm[key] || ""} onChange={(e) => setOddsForm({ ...oddsForm, [key]: e.target.value })} className="input-field w-full rounded px-2 py-1.5 text-sm" placeholder="0.00" />
                     </div>
                   ))}
                 </div>
-                <span className="text-[10px] text-yellow-500">平局</span>
+                <span className="text-sm text-yellow-500">平局</span>
                 <div className="grid grid-cols-6 gap-1.5">
                   {([
                     ["cs_0:0", "0:0"], ["cs_1:1", "1:1"], ["cs_2:2", "2:2"], ["cs_3:3", "3:3"],
                   ] as const).map(([key, label]) => (
                     <div key={key}>
-                      <span className="text-[10px] text-text-muted block mb-0.5">{label}</span>
-                      <input type="number" step="0.01" value={oddsForm[key] || ""} onChange={(e) => setOddsForm({ ...oddsForm, [key]: e.target.value })} className="input-field w-full rounded px-2 py-1.5 text-xs num" placeholder="0.00" />
+                      <span className="text-sm text-text-muted block mb-0.5">{label}</span>
+                      <input type="number" step="0.01" value={oddsForm[key] || ""} onChange={(e) => setOddsForm({ ...oddsForm, [key]: e.target.value })} className="input-field w-full rounded px-2 py-1.5 text-sm" placeholder="0.00" />
                     </div>
                   ))}
                 </div>
-                <span className="text-[10px] text-red">客胜</span>
+                <span className="text-sm text-red">客胜</span>
                 <div className="grid grid-cols-6 gap-1.5">
                   {([
                     ["cs_0:1", "0:1"], ["cs_0:2", "0:2"], ["cs_1:2", "1:2"], ["cs_0:3", "0:3"],
@@ -628,8 +628,8 @@ export default function AdminTournamentsPage() {
                     ["cs_2:4", "2:4"], ["cs_0:5", "0:5"], ["cs_1:5", "1:5"], ["cs_2:5", "2:5"],
                   ] as const).map(([key, label]) => (
                     <div key={key}>
-                      <span className="text-[10px] text-text-muted block mb-0.5">{label}</span>
-                      <input type="number" step="0.01" value={oddsForm[key] || ""} onChange={(e) => setOddsForm({ ...oddsForm, [key]: e.target.value })} className="input-field w-full rounded px-2 py-1.5 text-xs num" placeholder="0.00" />
+                      <span className="text-sm text-text-muted block mb-0.5">{label}</span>
+                      <input type="number" step="0.01" value={oddsForm[key] || ""} onChange={(e) => setOddsForm({ ...oddsForm, [key]: e.target.value })} className="input-field w-full rounded px-2 py-1.5 text-sm" placeholder="0.00" />
                     </div>
                   ))}
                 </div>
@@ -638,8 +638,8 @@ export default function AdminTournamentsPage() {
                     ["cs_胜其它", "胜其它"], ["cs_平其它", "平其它"], ["cs_负其它", "负其它"],
                   ] as const).map(([key, label]) => (
                     <div key={key}>
-                      <span className="text-[10px] text-text-muted block mb-0.5">{label}</span>
-                      <input type="number" step="0.01" value={oddsForm[key] || ""} onChange={(e) => setOddsForm({ ...oddsForm, [key]: e.target.value })} className="input-field w-full rounded px-2 py-1.5 text-xs num" placeholder="0.00" />
+                      <span className="text-sm text-text-muted block mb-0.5">{label}</span>
+                      <input type="number" step="0.01" value={oddsForm[key] || ""} onChange={(e) => setOddsForm({ ...oddsForm, [key]: e.target.value })} className="input-field w-full rounded px-2 py-1.5 text-sm" placeholder="0.00" />
                     </div>
                   ))}
                 </div>
@@ -658,45 +658,45 @@ export default function AdminTournamentsPage() {
         <Modal onClose={() => setShowSettle(false)} title={`${settleMatchData.status === "FINISHED" ? "修改结算" : "结算"} · ${settleMatchData.homeTeam} vs ${settleMatchData.awayTeam}`}>
           <div className="space-y-3">
             <div>
-              <div className="mb-2 text-xs font-semibold text-text-secondary">半场比分</div>
+              <div className="mb-2 text-sm font-semibold text-text-secondary">半场比分</div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-text-secondary text-xs mb-1.5 block">{settleMatchData.homeTeam}</label>
-                  <input type="number" value={settleForm.halfHomeScore} onChange={(e) => setSettleForm({ ...settleForm, halfHomeScore: e.target.value })} className="input-field w-full rounded-xl px-4 py-3 text-sm num" placeholder="0" />
+                  <label className="text-text-secondary text-sm mb-1.5 block">{settleMatchData.homeTeam}</label>
+                  <input type="number" value={settleForm.halfHomeScore} onChange={(e) => setSettleForm({ ...settleForm, halfHomeScore: e.target.value })} className="input-field w-full rounded-xl px-4 py-3 text-sm" placeholder="0" />
                 </div>
                 <div>
-                  <label className="text-text-secondary text-xs mb-1.5 block">{settleMatchData.awayTeam}</label>
-                  <input type="number" value={settleForm.halfAwayScore} onChange={(e) => setSettleForm({ ...settleForm, halfAwayScore: e.target.value })} className="input-field w-full rounded-xl px-4 py-3 text-sm num" placeholder="0" />
+                  <label className="text-text-secondary text-sm mb-1.5 block">{settleMatchData.awayTeam}</label>
+                  <input type="number" value={settleForm.halfAwayScore} onChange={(e) => setSettleForm({ ...settleForm, halfAwayScore: e.target.value })} className="input-field w-full rounded-xl px-4 py-3 text-sm" placeholder="0" />
                 </div>
               </div>
             </div>
             <div>
-              <div className="mb-2 text-xs font-semibold text-text-secondary">全场比分（90分钟）<span className="text-accent ml-1">*用于结算</span></div>
+              <div className="mb-2 text-sm font-semibold text-text-secondary">全场比分（90分钟）<span className="text-accent ml-1">*用于结算</span></div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-text-secondary text-xs mb-1.5 block">{settleMatchData.homeTeam}</label>
-                  <input type="number" value={settleForm.homeScore} onChange={(e) => setSettleForm({ ...settleForm, homeScore: e.target.value })} className="input-field w-full rounded-xl px-4 py-3 text-sm num" placeholder="0" />
+                  <label className="text-text-secondary text-sm mb-1.5 block">{settleMatchData.homeTeam}</label>
+                  <input type="number" value={settleForm.homeScore} onChange={(e) => setSettleForm({ ...settleForm, homeScore: e.target.value })} className="input-field w-full rounded-xl px-4 py-3 text-sm" placeholder="0" />
                 </div>
                 <div>
-                  <label className="text-text-secondary text-xs mb-1.5 block">{settleMatchData.awayTeam}</label>
-                  <input type="number" value={settleForm.awayScore} onChange={(e) => setSettleForm({ ...settleForm, awayScore: e.target.value })} className="input-field w-full rounded-xl px-4 py-3 text-sm num" placeholder="0" />
+                  <label className="text-text-secondary text-sm mb-1.5 block">{settleMatchData.awayTeam}</label>
+                  <input type="number" value={settleForm.awayScore} onChange={(e) => setSettleForm({ ...settleForm, awayScore: e.target.value })} className="input-field w-full rounded-xl px-4 py-3 text-sm" placeholder="0" />
                 </div>
               </div>
             </div>
             <div>
-              <div className="mb-2 text-xs font-semibold text-text-secondary">最终比分（含加时/点球）<span className="text-text-muted ml-1">仅记录，不参与结算</span></div>
+              <div className="mb-2 text-sm font-semibold text-text-secondary">最终比分（含加时/点球）<span className="text-text-muted ml-1">仅记录，不参与结算</span></div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-text-secondary text-xs mb-1.5 block">{settleMatchData.homeTeam}</label>
-                  <input type="number" value={settleForm.finalHomeScore} onChange={(e) => setSettleForm({ ...settleForm, finalHomeScore: e.target.value })} className="input-field w-full rounded-xl px-4 py-3 text-sm num" placeholder="可选" />
+                  <label className="text-text-secondary text-sm mb-1.5 block">{settleMatchData.homeTeam}</label>
+                  <input type="number" value={settleForm.finalHomeScore} onChange={(e) => setSettleForm({ ...settleForm, finalHomeScore: e.target.value })} className="input-field w-full rounded-xl px-4 py-3 text-sm" placeholder="可选" />
                 </div>
                 <div>
-                  <label className="text-text-secondary text-xs mb-1.5 block">{settleMatchData.awayTeam}</label>
-                  <input type="number" value={settleForm.finalAwayScore} onChange={(e) => setSettleForm({ ...settleForm, finalAwayScore: e.target.value })} className="input-field w-full rounded-xl px-4 py-3 text-sm num" placeholder="可选" />
+                  <label className="text-text-secondary text-sm mb-1.5 block">{settleMatchData.awayTeam}</label>
+                  <input type="number" value={settleForm.finalAwayScore} onChange={(e) => setSettleForm({ ...settleForm, finalAwayScore: e.target.value })} className="input-field w-full rounded-xl px-4 py-3 text-sm" placeholder="可选" />
                 </div>
               </div>
             </div>
-            <p className="text-text-muted text-xs">结算依据半场+全场（90分钟）比分。最终比分仅作记录。</p>
+            <p className="text-text-muted text-sm">结算依据半场+全场（90分钟）比分。最终比分仅作记录。</p>
             <button
               disabled={settleForm.homeScore === "" || settleForm.awayScore === ""}
               onClick={handleSettle}
@@ -713,7 +713,7 @@ export default function AdminTournamentsPage() {
         <Modal onClose={() => { setShowImport(false); setImportResult(""); }} title="从本地数据导入">
           <div className="space-y-4">
             <div>
-              <label className="text-text-secondary text-xs mb-1.5 block">导入到赛事</label>
+              <label className="text-text-secondary text-sm mb-1.5 block">导入到赛事</label>
               <select
                 value={selectedTournamentId || ""}
                 onChange={(e) => setSelectedTournamentId(Number(e.target.value) || null)}
@@ -726,12 +726,12 @@ export default function AdminTournamentsPage() {
               </select>
             </div>
             <div>
-              <label className="text-text-secondary text-xs mb-1.5 block">比赛数据 (JSON)</label>
+              <label className="text-text-secondary text-sm mb-1.5 block">比赛数据 (JSON)</label>
               <textarea
                 value={importJson}
                 onChange={(e) => setImportJson(e.target.value)}
                 rows={12}
-                className="input-field w-full rounded-xl px-4 py-3 text-xs font-mono num leading-relaxed"
+                className="input-field w-full rounded-xl px-4 py-3 text-sm font-mono leading-relaxed"
                 placeholder={`[
   {
     "apiMatchId": "500-001",
@@ -757,7 +757,7 @@ export default function AdminTournamentsPage() {
               {importLoading ? "导入中..." : "确认导入"}
             </button>
             {importResult && (
-              <div className="text-accent text-xs text-center">{importResult}</div>
+              <div className="text-accent text-sm text-center">{importResult}</div>
             )}
           </div>
         </Modal>

@@ -12,7 +12,7 @@ export const GET = withAdmin(async () => {
       role: true,
       status: true,
       createdAt: true,
-      stats: { select: { totalBets: true, netProfit: true } },
+      stats: { select: { totalBets: true, totalBetAmount: true, totalWonBets: true, netProfit: true } },
     },
     orderBy: { createdAt: "desc" },
   });
@@ -21,6 +21,8 @@ export const GET = withAdmin(async () => {
     users.map((u) => ({
       ...u,
       totalBets: u.stats?.totalBets ?? 0,
+      totalBetAmount: Number(u.stats?.totalBetAmount ?? 0),
+      totalWonBets: u.stats?.totalWonBets ?? 0,
       netProfit: Number(u.stats?.netProfit ?? 0),
     }))
   );

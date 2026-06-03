@@ -249,20 +249,81 @@ export default function BetManagementPage() {
 
   const selectedMatchData = singleMatch ? matches.find((m) => m.id === singleMatch) : null;
 
+  const activeBets = bets.filter((b) => b.status === "APPROVED");
+
   return (
-    <div className="max-w-4xl">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="font-display text-lg font-semibold">下注管理</h2>
-          <p className="text-text-muted text-xs mt-1">录入玩家的下注信息</p>
-        </div>
-        <button onClick={() => { setShowForm(!showForm); if (showForm) resetForm(); }} className="btn-primary px-4 py-2 rounded-lg text-sm">
-          {showForm ? "收起" : "+ 录入下注"}
-        </button>
+    <div className="flex gap-6 items-start">
+      {/* Left: bet records */}
+      <div className="flex-1 min-w-0">
+        <h2 className="font-display text-lg font-semibold mb-1">下注管理</h2>
+        <p className="text-text-muted text-xs mb-4">仅显示未开奖的下注记录</p>
+
+        {loading ? (
+          <div className="text-text-muted text-sm py-8 text-center">加载中...</div>
+        ) : activeBets.length === 0 ? (
+          <div className="text-text-muted text-sm py-8 text-center">暂无进行中的下注记录</div>
+        ) : (
+          <div className="glass rounded-xl overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border text-text-muted text-sm">
+                  <th className="text-left py-2.5 px-4 font-medium">玩家</th>
+                  <th className="text-left py-2.5 px-4 font-medium">玩法</th>
+                  <th className="text-left py-2.5 px-4 font-medium">选择</th>
+                  <th className="text-right py-2.5 px-4 font-medium">赔率</th>
+                  <th className="text-right py-2.5 px-4 font-medium">金额</th>
+                  <th className="text-right py-2.5 px-4 font-medium">操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                {activeBets.map((bet) => {
+                  const isParlay = bet.betMode === "PARLAY";
+                  return (
+                    <tr key={bet.id} className="border-b border-border/50 last:border-0">
+                      <td className="py-2.5 px-4">{bet.user?.nickname || "-"}</td>
+                      <td className="py-2.5 px-4">
+                        {isParlay ? (
+                          <span className="text-sm px-1.5 py-0.5 rounded bg-accent/10 text-accent">串关 ×{bet.items.length}</span>
+                        ) : (
+                          <span className="text-sm px-1.5 py-0.5 rounded bg-bg-elevated text-text-secondary">单场</span>
+                        )}
+                      </td>
+                      <td className="py-2.5 px-4">
+                        {bet.items.map((it, i) => (
+                          <div key={i} className={i > 0 ? "mt-0.5" : ""}>
+                            <span className="text-text-secondary text-sm">{it.match.homeTeam} vs {it.match.awayTeam}</span>
+                            <span className="text-accent text-sm ml-1">{formatOptionLabel(it.betMarket as BetItem["betMarket"], it.selectedOption)}</span>
+                          </div>
+                        ))}
+                      </td>
+                      <td className="py-2.5 px-4 text-right text-sm">{Number(bet.lockedTotalOdds).toFixed(2)}</td>
+                      <td className="py-2.5 px-4 text-right">{Number(bet.totalAmount).toFixed(0)}</td>
+                      <td className="py-2.5 px-4 text-right">
+                        <button onClick={() => setDeleteTarget(bet)}
+                          className="text-sm px-2 py-1 rounded bg-red/10 text-red hover:bg-red/20 transition-colors">
+                          删除
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
-      {showForm && (
-        <div className="glass rounded-xl p-5 mb-6 animate-fade-in-up">
+      {/* Right: entry form */}
+      <div className="w-[800px] shrink-0 sticky top-6">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-display text-base font-semibold">录入下注</h3>
+          <button onClick={() => { if (showForm) resetForm(); setShowForm(!showForm); }} className="text-xs text-accent hover:underline">
+            {showForm ? "收起" : "展开"}
+          </button>
+        </div>
+
+        {showForm && (
+        <div className="glass rounded-xl p-5 animate-fade-in-up">
           {/* Player */}
           <div className="mb-4">
             <label className="text-sm text-text-secondary mb-2 block">选择玩家</label>
@@ -374,11 +435,11 @@ export default function BetManagementPage() {
                       <div className="flex-1 min-w-0">
                         <span className="text-xs">{MARKET_NAMES[sel.betMarket]}</span>
                         <span className="text-xs text-accent ml-1">{formatOptionLabel(sel.betMarket, sel.selectedOption)}</span>
-                        <span className="text-xs text-text-muted num ml-1">@ {sel.odds.toFixed(2)}</span>
+                        <span className="text-xs text-text-muted ml-1">@ {sel.odds.toFixed(2)}</span>
                       </div>
                       <input
                         type="number" value={sel.amount} onChange={(e) => updateSingleAmount(idx, e.target.value)}
-                        className="input-field w-24 rounded px-2 py-1 text-xs num text-right" placeholder="金额"
+                        className="input-field w-24 rounded px-2 py-1 text-xs text-right" placeholder="金额"
                       />
                       <button onClick={() => removeSingleSelection(idx)} className="text-red text-xs shrink-0">移除</button>
                     </div>
@@ -442,7 +503,7 @@ export default function BetManagementPage() {
                             {picked ? (
                               <div className="flex items-center gap-1.5">
                                 <span className="text-xs text-accent">{MARKET_NAMES[picked.betMarket]} · {formatOptionLabel(picked.betMarket, picked.selectedOption)}</span>
-                                <span className="text-xs num text-text-muted">@ {picked.odds.toFixed(2)}</span>
+                                <span className="text-xs text-text-muted">@ {picked.odds.toFixed(2)}</span>
                               </div>
                             ) : (
                               <span className="text-xs text-text-muted">点击展开选赔率</span>
@@ -526,8 +587,8 @@ export default function BetManagementPage() {
                     </div>
                     <div className="text-right text-xs text-text-muted py-2 min-w-[100px]">
                       <div>串关 ×{parlayItems.length}</div>
-                      <div>赔率 <span className="num text-text-primary">{parlayRoundedOdds.toFixed(2)}</span></div>
-                      {parlayAmount && <div>可赢 <span className="num text-accent">{parlayPayout}</span></div>}
+                      <div>赔率 <span className="text-text-primary">{parlayRoundedOdds.toFixed(2)}</span></div>
+                      {parlayAmount && <div>可赢 <span className="text-accent">{parlayPayout}</span></div>}
                     </div>
                     <button onClick={handleParlaySubmit}
                       disabled={!selectedPlayer || !parlayAmount || submitting}
@@ -540,70 +601,6 @@ export default function BetManagementPage() {
             </div>
           )}
         </div>
-      )}
-
-      {/* Bet records */}
-      <div>
-        <h3 className="text-sm font-medium text-text-secondary mb-3">下注记录</h3>
-        {loading ? (
-          <div className="text-text-muted text-sm py-8 text-center">加载中...</div>
-        ) : bets.length === 0 ? (
-          <div className="text-text-muted text-sm py-8 text-center">暂无下注记录</div>
-        ) : (
-          <div className="glass rounded-xl overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-text-muted text-xs">
-                  <th className="text-left py-2.5 px-4 font-medium">玩家</th>
-                  <th className="text-left py-2.5 px-4 font-medium">玩法</th>
-                  <th className="text-left py-2.5 px-4 font-medium">选择</th>
-                  <th className="text-right py-2.5 px-4 font-medium">赔率</th>
-                  <th className="text-right py-2.5 px-4 font-medium">金额</th>
-                  <th className="text-right py-2.5 px-4 font-medium">状态</th>
-                  <th className="text-right py-2.5 px-4 font-medium">操作</th>
-                </tr>
-              </thead>
-              <tbody>
-                {bets.map((bet) => {
-                  const st = STATUS_MAP[bet.status] || { label: bet.status, cls: "bg-bg-elevated text-text-muted" };
-                  const isParlay = bet.betMode === "PARLAY";
-                  return (
-                    <tr key={bet.id} className="border-b border-border/50 last:border-0">
-                      <td className="py-2.5 px-4">{bet.user?.nickname || "-"}</td>
-                      <td className="py-2.5 px-4">
-                        {isParlay ? (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/10 text-accent">串关 ×{bet.items.length}</span>
-                        ) : (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-bg-elevated text-text-secondary">单场</span>
-                        )}
-                      </td>
-                      <td className="py-2.5 px-4">
-                        {bet.items.map((it, i) => (
-                          <div key={i} className={i > 0 ? "mt-0.5" : ""}>
-                            <span className="text-text-secondary text-xs">{it.match.homeTeam} vs {it.match.awayTeam}</span>
-                            <span className="text-accent text-xs ml-1">{formatOptionLabel(it.betMarket as BetItem["betMarket"], it.selectedOption)}</span>
-                          </div>
-                        ))}
-                      </td>
-                      <td className="py-2.5 px-4 text-right num text-xs">{Number(bet.lockedTotalOdds).toFixed(2)}</td>
-                      <td className="py-2.5 px-4 text-right num">{Number(bet.totalAmount).toFixed(0)}</td>
-                      <td className="py-2.5 px-4 text-right">
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full ${st.cls}`}>{st.label}</span>
-                      </td>
-                      <td className="py-2.5 px-4 text-right">
-                        {!["WON", "LOST", "CANCELLED"].includes(bet.status) && (
-                          <button onClick={() => setDeleteTarget(bet)}
-                            className="text-[10px] px-2 py-1 rounded bg-red/10 text-red hover:bg-red/20 transition-colors">
-                            删除
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
         )}
       </div>
 
@@ -620,7 +617,7 @@ export default function BetManagementPage() {
                 <div key={i}>
                   {it.match.homeTeam} vs {it.match.awayTeam}
                   <span className="text-accent ml-1">{formatOptionLabel(it.betMarket as BetItem["betMarket"], it.selectedOption)}</span>
-                  <span className="text-text-muted num ml-1">@ {Number(it.lockedOdds).toFixed(2)}</span>
+                  <span className="text-text-muted ml-1">@ {Number(it.lockedOdds).toFixed(2)}</span>
                 </div>
               ))}
               <div className="pt-1 border-t border-border/30 font-medium">
@@ -647,7 +644,7 @@ export default function BetManagementPage() {
 function OddsSection({ title, columns, children }: { title: string; columns: string; children: React.ReactNode }) {
   return (
     <section>
-      <div className="mb-1.5 text-[10px] font-semibold text-text-muted">{title}</div>
+      <div className="mb-1.5 text-sm font-semibold text-text-muted">{title}</div>
       <div className={`grid ${columns} gap-1`}>{children}</div>
     </section>
   );
@@ -656,11 +653,11 @@ function OddsSection({ title, columns, children }: { title: string; columns: str
 function OddsPickButton({ label, odds, selected, onClick }: { label: string; odds: number; selected?: boolean; onClick: () => void }) {
   return (
     <button onClick={onClick}
-      className={`odds-btn flex items-center justify-center gap-1 px-1.5 py-1.5 text-center text-[10px] transition-colors ${
+      className={`odds-btn flex items-center justify-center gap-1 px-2 py-2 text-center text-sm transition-colors ${
         selected ? "!bg-accent/20 !text-accent !border-accent/40 ring-1 ring-accent/30" : ""
       }`}>
       <span>{label}</span>
-      <span className="num">{odds.toFixed(2)}</span>
+      <span>{odds.toFixed(2)}</span>
     </button>
   );
 }
