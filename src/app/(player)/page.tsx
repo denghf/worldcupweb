@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 
 const WORLD_CUP_KICKOFF = new Date("2026-06-11T00:00:00-04:00").getTime();
@@ -168,6 +168,7 @@ export default function HomePage() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeDate, setActiveDate] = useState<string | null>(null);
+  const tabListRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetch("/api/matches")
@@ -193,8 +194,18 @@ export default function HomePage() {
     return acc;
   }, []);
 
-  const selectedDate = activeDate ?? groups[0]?.key;
+  const defaultDate = groups.find((g) => g.matches.some((m) => m.status !== "FINISHED"))?.key ?? groups[0]?.key;
+  const selectedDate = activeDate ?? defaultDate;
   const selectedGroup = groups.find((group) => group.key === selectedDate) ?? groups[0];
+
+  useEffect(() => {
+    if (!tabListRef.current || !selectedDate) return;
+    const activeBtn = tabListRef.current.querySelector(`[data-tab-key="${selectedDate}"]`) as HTMLElement | null;
+    if (!activeBtn) return;
+    const container = tabListRef.current;
+    const newScrollLeft = activeBtn.offsetLeft - 12;
+    container.scrollTo({ left: Math.max(0, newScrollLeft), behavior: "smooth" });
+  }, [selectedDate]);
 
   if (loading) {
     return (
@@ -230,10 +241,11 @@ export default function HomePage() {
       <CountdownSection />
 
       <div className="sticky top-0 z-30 -mx-3 mb-3 border-b border-border bg-bg-deep/95 px-3 py-2 backdrop-blur-xl">
-        <div className="scrollbar-hide flex gap-2 overflow-x-auto py-0.5">
+        <div ref={tabListRef} className="scrollbar-hide flex gap-2 overflow-x-auto py-0.5">
           {groups.map((group) => (
             <button
               key={group.key}
+              data-tab-key={group.key}
               onClick={() => {
                 setActiveDate(group.key);
               }}
