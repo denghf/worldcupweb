@@ -74,21 +74,33 @@ export default function RankingPage() {
 
   return (
     <div className="bg-pattern px-3 pb-4">
-      <section className="-mx-3 mb-3 bg-gradient-to-r from-accent to-red-dim text-white" style={{ aspectRatio: "980/400" }}>
+      <section className="relative -mx-3 text-white">
         <img
-          src="/banner-ranking.png"
+          src="/ranking.png"
           alt="竞猜排行榜"
-          className="h-full w-full object-cover"
+          className="h-auto w-full"
           onError={(e) => {
             (e.target as HTMLImageElement).style.display = "none";
           }}
         />
-      </section>
-
-      <section className="mb-3 grid grid-cols-3 gap-2">
-        <TopPlayerCard title="大赢家" player={bigWinner} value={bigWinner ? `${Math.round(bigWinner.netProfit >= 0 ? bigWinner.netProfit : 0)}` : "-"} />
-        <TopPlayerCard title="大财主" player={bigSpender} value={bigSpender ? `${Math.round(bigSpender.totalBetAmount)}` : "-"} />
-        <TopPlayerCard title="手气王" player={luckyStar} value={luckyStar ? `${luckyStar.winRate}%` : "-"} />
+        {bigSpender && (
+          <div className="absolute flex flex-col items-center gap-1" style={{ left: "17.5%", top: "62%", transform: "translate(-50%, -50%)" }}>
+            <Avatar player={bigSpender} size="2xl" />
+            <div className="max-w-[90px] truncate text-xs font-bold text-black">{bigSpender.nickname}</div>
+          </div>
+        )}
+        {bigWinner && (
+          <div className="absolute flex flex-col items-center gap-1.5" style={{ left: "50%", top: "56%", transform: "translate(-50%, -50%)" }}>
+            <Avatar player={bigWinner} size="4xl" />
+            <div className="max-w-[120px] truncate text-sm font-bold text-black">{bigWinner.nickname}</div>
+          </div>
+        )}
+        {luckyStar && (
+          <div className="absolute flex flex-col items-center gap-1" style={{ left: "82.5%", top: "62%", transform: "translate(-50%, -50%)" }}>
+            <Avatar player={luckyStar} size="2xl" />
+            <div className="max-w-[90px] truncate text-xs font-bold text-black">{luckyStar.nickname}</div>
+          </div>
+        )}
       </section>
 
       <div className="sticky top-0 z-30 -mx-3 mb-3 border-b border-border bg-bg-deep/95 px-3 pb-1 pt-2 backdrop-blur-xl">
@@ -144,25 +156,6 @@ export default function RankingPage() {
   );
 }
 
-function TopPlayerCard({ title, player, value }: { title: string; player?: Ranking; value: string }) {
-  return (
-    <div className="rounded-2xl bg-white px-3 py-3 text-center shadow-sm">
-      <div className="text-[10px] font-semibold text-text-muted mb-2">{title}</div>
-      {player ? (
-        <div className="flex flex-col items-center gap-1">
-          <div className="h-8 w-8">
-            <Avatar player={player} size="md" />
-          </div>
-          <div className="text-xs font-bold text-text-primary truncate max-w-full">{player.nickname}</div>
-          <div className="num text-sm font-black text-accent">{value}</div>
-        </div>
-      ) : (
-        <div className="num text-base font-black text-text-primary">{value}</div>
-      )}
-    </div>
-  );
-}
-
 function RankingRow({ player, index }: { player: Ranking; index: number }) {
   const medal = ["🥇", "🥈", "🥉"][player.rank - 1];
 
@@ -187,8 +180,15 @@ function RankingRow({ player, index }: { player: Ranking; index: number }) {
   );
 }
 
-function Avatar({ player, size = "md" }: { player: Ranking; size?: "md" | "lg" }) {
-  const dimension = size === "lg" ? "h-12 w-12" : "h-9 w-9";
+function Avatar({ player, size = "md" }: { player: Ranking; size?: "sm" | "md" | "lg" | "xl" | "2xl" | "3xl" | "4xl" }) {
+  const dimension =
+    size === "4xl" ? "h-28 w-28" :
+    size === "3xl" ? "h-24 w-24" :
+    size === "2xl" ? "h-20 w-20" :
+    size === "xl" ? "h-16 w-16" :
+    size === "lg" ? "h-12 w-12" :
+    size === "sm" ? "h-6 w-6" :
+    "h-9 w-9";
   const svgCode = multiavatar(player.nickname);
 
   return (
