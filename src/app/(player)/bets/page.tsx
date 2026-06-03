@@ -84,7 +84,7 @@ export default function BetsPage() {
   }
 
   return (
-    <div className="bg-pattern px-3 pb-4 pt-3">
+    <div className="px-3 pb-4 pt-3">
       <section className="mb-3 rounded-2xl bg-white p-4 shadow-sm">
         <div className="mb-4 flex items-start justify-between">
           <div>
@@ -104,8 +104,8 @@ export default function BetsPage() {
         </div>
       </section>
 
-      <div className="sticky top-12 z-30 -mx-3 mb-3 border-b border-border bg-bg-deep/95 px-3 pb-2 pt-1 backdrop-blur-xl">
-        <div className="flex gap-2 overflow-x-auto pb-1">
+      <div className="sticky top-0 z-30 -mx-3 mb-3 border-b border-border bg-bg-deep/95 px-3 pb-1 pt-2 backdrop-blur-xl">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1">
           {([
             { key: "all", label: "全部" },
             { key: "APPROVED", label: "已下注" },
@@ -117,8 +117,8 @@ export default function BetsPage() {
               onClick={() => setTab(item.key)}
               className={`rounded-xl px-4 py-2 text-xs font-bold whitespace-nowrap transition-all ${
                 tab === item.key
-                  ? "bg-accent text-white shadow-[0_8px_18px_rgba(230,0,18,0.18)]"
-                  : "bg-white text-text-secondary shadow-sm"
+                  ? "bg-accent text-white"
+                  : "bg-white text-text-secondary"
               }`}
             >
               {item.label}

@@ -71,7 +71,7 @@ body {
 }
 
 .glass:hover {
-  border-color: var(--color-border-accent);
+  border-color: transparent;
 }
 
 .flag-badge {

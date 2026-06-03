@@ -73,33 +73,16 @@ export default function RankingPage() {
   }
 
   return (
-    <div className="bg-pattern px-3 pb-4 pt-3">
-      <section className="mb-3 overflow-hidden rounded-2xl bg-gradient-to-br from-[#cf0010] via-accent to-[#f45518] p-4 text-white shadow-[0_14px_34px_rgba(230,0,18,0.22)]">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <div className="mb-1 text-xs font-semibold opacity-80">2026世界杯竞猜</div>
-            <h2 className="text-2xl font-black tracking-tight">竞猜排行榜</h2>
-            <p className="mt-1 text-xs opacity-80">按结算结果实时更新名次</p>
-          </div>
-          <div className="text-5xl drop-shadow-sm">🏆</div>
-        </div>
-        {champion && (
-          <div className="rounded-2xl bg-white/16 p-3 backdrop-blur">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <Avatar player={champion} size="lg" />
-                <div>
-                  <div className="text-[10px] font-semibold opacity-75">当前榜首</div>
-                  <div className="text-base font-black">{champion.nickname}</div>
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="num text-xl font-black">{champion.netProfit >= 0 ? "+" : ""}{Math.round(champion.netProfit)}</div>
-                <div className="text-[10px] opacity-75">胜率 {champion.winRate}%</div>
-              </div>
-            </div>
-          </div>
-        )}
+    <div className="bg-pattern px-3 pb-4">
+      <section className="-mx-3 mb-3 bg-gradient-to-r from-accent to-red-dim text-white">
+        <img
+          src="/banner-ranking.png"
+          alt="竞猜排行榜"
+          className="w-full"
+          onError={(e) => {
+            (e.target as HTMLImageElement).style.display = "none";
+          }}
+        />
       </section>
 
       <section className="mb-3 grid grid-cols-3 gap-2">
@@ -108,14 +91,14 @@ export default function RankingPage() {
         <TopPlayerCard title="手气王" player={luckyStar} value={luckyStar ? `${luckyStar.winRate}%` : "-"} />
       </section>
 
-      <div className="sticky top-12 z-30 -mx-3 mb-3 border-b border-border bg-bg-deep/95 px-3 pb-2 pt-1 backdrop-blur-xl">
-        <div className="flex gap-2 overflow-x-auto pb-1">
+      <div className="sticky top-0 z-30 -mx-3 mb-3 border-b border-border bg-bg-deep/95 px-3 pb-1 pt-2 backdrop-blur-xl">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1">
           <button
             onClick={() => setSortBy("netProfit")}
             className={`rounded-xl px-4 py-2 text-xs font-bold transition-all ${
               sortBy === "netProfit"
-                ? "bg-accent text-white shadow-[0_8px_18px_rgba(230,0,18,0.18)]"
-                : "bg-white text-text-secondary shadow-sm"
+                ? "bg-accent text-white"
+                : "bg-white text-text-secondary"
             }`}
           >
             总榜
@@ -124,8 +107,8 @@ export default function RankingPage() {
             onClick={() => setSortBy("totalBetAmount")}
             className={`rounded-xl px-4 py-2 text-xs font-bold transition-all ${
               sortBy === "totalBetAmount"
-                ? "bg-accent text-white shadow-[0_8px_18px_rgba(230,0,18,0.18)]"
-                : "bg-white text-text-secondary shadow-sm"
+                ? "bg-accent text-white"
+                : "bg-white text-text-secondary"
             }`}
           >
             投注额
@@ -134,8 +117,8 @@ export default function RankingPage() {
             onClick={() => setSortBy("winRate")}
             className={`rounded-xl px-4 py-2 text-xs font-bold transition-all ${
               sortBy === "winRate"
-                ? "bg-accent text-white shadow-[0_8px_18px_rgba(230,0,18,0.18)]"
-                : "bg-white text-text-secondary shadow-sm"
+                ? "bg-accent text-white"
+                : "bg-white text-text-secondary"
             }`}
           >
             命中率

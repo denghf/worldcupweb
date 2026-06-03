@@ -10,28 +10,16 @@ const tabs = [
 ];
 
 export default function PlayerLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const isMatchDetail = pathname.startsWith("/match/");
+
   return (
     <div className="min-h-[100dvh] bg-bg-deep text-text-primary">
-      <TopBar />
-      <main className="mx-auto flex min-h-[calc(100dvh-49px)] w-full max-w-md flex-col pb-20 md:max-w-3xl">
+      <main className={`mx-auto flex w-full max-w-md flex-col md:max-w-3xl ${isMatchDetail ? "min-h-[100dvh]" : "min-h-[100dvh] pb-20"}`}>
         {children}
       </main>
-      <BottomNav />
+      {!isMatchDetail && <BottomNav />}
     </div>
-  );
-}
-
-function TopBar() {
-  return (
-    <header className="sticky top-0 z-40 border-b border-border bg-white/95 backdrop-blur-xl">
-      <div className="relative mx-auto flex h-12 max-w-md items-center justify-center px-4 md:max-w-3xl">
-        <div className="absolute left-4 flex items-center gap-1.5">
-          <span className="text-base leading-none">🏆</span>
-          <span className="font-display text-sm font-bold tracking-wide text-accent">嗨起来</span>
-        </div>
-        <h1 className="text-base font-bold tracking-wide">世界杯</h1>
-      </div>
-    </header>
   );
 }
 

@@ -3,6 +3,30 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
+const WORLD_CUP_KICKOFF = new Date("2026-06-11T00:00:00-04:00").getTime();
+
+function useCountdown() {
+  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+
+  useEffect(() => {
+    const tick = () => {
+      const now = Date.now();
+      const diff = Math.max(0, WORLD_CUP_KICKOFF - now);
+      setTimeLeft({
+        days: Math.floor(diff / (1000 * 60 * 60 * 24)),
+        hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
+        minutes: Math.floor((diff / (1000 * 60)) % 60),
+        seconds: Math.floor((diff / 1000) % 60),
+      });
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  return timeLeft;
+}
+
 interface Match {
   id: number;
   homeTeam: string;
@@ -171,7 +195,6 @@ export default function HomePage() {
 
   const selectedDate = activeDate ?? groups[0]?.key;
   const selectedGroup = groups.find((group) => group.key === selectedDate) ?? groups[0];
-  const upcomingCount = matches.filter((match) => match.status === "UPCOMING").length;
 
   if (loading) {
     return (
@@ -192,22 +215,21 @@ export default function HomePage() {
   }
 
   return (
-    <div className="bg-pattern px-3 pb-4 pt-3">
-      <section className="mb-3 overflow-hidden rounded-2xl bg-gradient-to-r from-accent to-red-dim p-4 text-white shadow-[0_14px_34px_rgba(230,0,18,0.22)]">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <div className="mb-1 text-xs font-semibold opacity-80">2026 FIFA WORLD CUP</div>
-            <h2 className="text-2xl font-black tracking-tight">小组赛竞猜</h2>
-            <p className="mt-1 text-xs opacity-80">看赛程、看赔率，下注请找管理员录入</p>
-          </div>
-          <div className="rounded-2xl bg-white/18 px-3 py-2 text-right backdrop-blur">
-            <div className="num text-2xl font-black">{upcomingCount}</div>
-            <div className="text-[10px] opacity-80">可竞猜</div>
-          </div>
-        </div>
+    <div className="bg-pattern px-3 pb-4">
+      <section className="-mx-3 bg-gradient-to-r from-accent to-red-dim text-white">
+        <img
+          src="/banner.png"
+          alt="2026世界杯"
+          className="w-full"
+          onError={(e) => {
+            (e.target as HTMLImageElement).style.display = "none";
+          }}
+        />
       </section>
 
-      <div className="sticky top-12 z-30 -mx-3 mb-3 border-b border-border bg-bg-deep/95 px-3 py-2 backdrop-blur-xl">
+      <CountdownSection />
+
+      <div className="sticky top-0 z-30 -mx-3 mb-3 border-b border-border bg-bg-deep/95 px-3 py-2 backdrop-blur-xl">
         <div className="scrollbar-hide flex gap-2 overflow-x-auto py-0.5">
           {groups.map((group) => (
             <button
@@ -217,8 +239,8 @@ export default function HomePage() {
               }}
               className={`flex h-11 min-w-16 shrink-0 flex-col items-center justify-center overflow-hidden rounded-xl px-3 text-center leading-none transition-all ${
                 selectedGroup?.key === group.key
-                  ? "bg-accent text-white shadow-[0_4px_12px_rgba(230,0,18,0.18)]"
-                  : "bg-white text-text-secondary shadow-sm"
+                  ? "bg-accent text-white"
+                  : "bg-white text-text-secondary"
               }`}
             >
               <div className="num text-sm font-bold leading-none">{group.label}</div>
@@ -272,7 +294,7 @@ function MatchCard({
 
   return (
     <article className={`glass overflow-hidden rounded-2xl animate-fade-in-up stagger-${Math.min(index + 1, 5)}`}>
-      <button type="button" onClick={onOpenDetail} className="block w-full px-3.5 py-3 text-left transition-colors hover:bg-bg-surface/70">
+      <button type="button" onClick={onOpenDetail} className="block w-full px-3.5 py-3 text-left transition-colors hover:bg-bg-surface/70 focus:outline-none">
         <div className="mb-3 flex items-center justify-between text-[11px]">
           <div className="flex items-center gap-1.5 text-text-muted">
             <span className="font-semibold">小组赛</span>
@@ -362,6 +384,42 @@ function OddsBox({ label, value }: { label: string; value?: number }) {
       <span>{label}</span>
       <span className="num">{value?.toFixed(2) ?? "-"}</span>
     </div>
+  );
+}
+
+function CountdownSection() {
+  const { days, hours, minutes, seconds } = useCountdown();
+
+  const pad = (n: number) => String(n).padStart(2, "0");
+
+  return (
+    <section className="-mx-3 bg-accent px-4 py-2">
+      <div className="flex items-center justify-between">
+        <div className="text-xs font-bold text-white">世界杯倒计时</div>
+
+        <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5">
+            <span className="num flex h-6 w-5.5 items-center justify-center rounded bg-white text-sm font-black text-accent">{pad(days)[0]}</span>
+            <span className="num flex h-6 w-5.5 items-center justify-center rounded bg-white text-sm font-black text-accent">{pad(days)[1]}</span>
+          </div>
+          <span className="mx-0.5 text-[10px] font-bold text-white/80">天</span>
+          <div className="flex items-center gap-0.5">
+            <span className="num flex h-6 w-5.5 items-center justify-center rounded bg-white text-sm font-black text-accent">{pad(hours)[0]}</span>
+            <span className="num flex h-6 w-5.5 items-center justify-center rounded bg-white text-sm font-black text-accent">{pad(hours)[1]}</span>
+          </div>
+          <span className="mx-0.5 text-xs font-black text-white">:</span>
+          <div className="flex items-center gap-0.5">
+            <span className="num flex h-6 w-5.5 items-center justify-center rounded bg-white text-sm font-black text-accent">{pad(minutes)[0]}</span>
+            <span className="num flex h-6 w-5.5 items-center justify-center rounded bg-white text-sm font-black text-accent">{pad(minutes)[1]}</span>
+          </div>
+          <span className="mx-0.5 text-xs font-black text-white">:</span>
+          <div className="flex items-center gap-0.5">
+            <span className="num flex h-6 w-5.5 items-center justify-center rounded bg-white text-sm font-black text-accent">{pad(seconds)[0]}</span>
+            <span className="num flex h-6 w-5.5 items-center justify-center rounded bg-white text-sm font-black text-accent">{pad(seconds)[1]}</span>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 
