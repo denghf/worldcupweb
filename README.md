@@ -48,6 +48,53 @@ ADMIN_PASSWORD=admin123456
 ADMIN_NICKNAME=管理员
 ```
 
+## 数据脚本
+
+`scripts/` 目录提供两个辅助脚本，用于从 500.com 抓取竞彩数据并导入系统。
+
+### 依赖
+
+```bash
+pip install requests beautifulsoup4
+```
+
+### `scripts/fetch_500.py` — 抓取 500.com 数据
+
+抓取指定日期的赛事和赔率，生成 `/json/YYYYMMDD.json`。
+
+```bash
+# 抓取 2026-06-03 的数据（默认输出到 json/20260603.json）
+python3 scripts/fetch_500.py 2026-06-03
+
+# 指定输出路径
+python3 scripts/fetch_500.py 2026-06-03 --out json/0603.json
+```
+
+支持抓取的玩法：胜平负、让球胜平负、总进球、半全场、猜比分。
+
+### `scripts/import_json.py` — 校验并上传
+
+校验 `/json/*.json` 格式，并调用 `/api/admin/import/local` 批量导入。
+
+```bash
+# 校验并上传所有 json 文件到 tournamentId=1
+python3 scripts/import_json.py --tournament-id 1
+
+# 只上传指定文件
+python3 scripts/import_json.py --tournament-id 1 --file json/0603.json
+
+# 指定远程地址或手动传入 admin token
+python3 scripts/import_json.py --tournament-id 1 \
+  --base-url http://localhost:3000 \
+  --token <jwt>
+```
+
+校验规则：
+- JSON 根必须是数组
+- 每场比赛必须包含 `apiMatchId`、`homeTeam`、`awayTeam`、`kickoffTime`、`odds`
+- `betType` 仅限 `X1X` / `HANDICAP_X1X` / `HALF_FULL` / `TOTAL_GOALS` / `CORRECT_SCORE`
+- 自动检测同一比赛内重复的 `(betType, optionKey)`
+
 ## Verification
 
 ```bash

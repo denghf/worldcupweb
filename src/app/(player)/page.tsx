@@ -216,11 +216,11 @@ export default function HomePage() {
 
   return (
     <div className="bg-pattern px-3 pb-4">
-      <section className="-mx-3 bg-gradient-to-r from-accent to-red-dim text-white">
+      <section className="-mx-3 bg-gradient-to-r from-accent to-red-dim text-white" style={{ aspectRatio: "1120/400" }}>
         <img
           src="/banner.png"
           alt="2026世界杯"
-          className="w-full"
+          className="h-full w-full object-cover"
           onError={(e) => {
             (e.target as HTMLImageElement).style.display = "none";
           }}

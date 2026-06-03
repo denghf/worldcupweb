@@ -391,19 +391,19 @@ export default function BetManagementPage() {
                     </OddsSection>
                   )}
 
-                  {selectedMatchData.odds.halfFull.length > 0 && (
-                    <OddsSection title="半全场" columns="grid-cols-3">
-                      {selectedMatchData.odds.halfFull.map((o) => (
-                        <OddsPickButton key={o.label} label={o.label} odds={o.value}
-                          selected={singleSelections.some((s) => s.betMarket === "HALF_FULL" && s.selectedOption === o.label)}
-                          onClick={() => addSingleSelection({ matchId: selectedMatchData.id, homeTeam: selectedMatchData.homeTeam, awayTeam: selectedMatchData.awayTeam, betMarket: "HALF_FULL", selectedOption: o.label, odds: o.value })}
+                  {selectedMatchData.odds.correctScore.length > 0 && (
+                    <OddsSection title="猜比分" columns="grid-cols-7">
+                      {selectedMatchData.odds.correctScore.map((s) => (
+                        <OddsPickButton key={s.label} label={s.label} odds={s.value}
+                          selected={singleSelections.some((sel) => sel.betMarket === "CORRECT_SCORE" && sel.selectedOption === s.label)}
+                          onClick={() => addSingleSelection({ matchId: selectedMatchData.id, homeTeam: selectedMatchData.homeTeam, awayTeam: selectedMatchData.awayTeam, betMarket: "CORRECT_SCORE", selectedOption: s.label, odds: s.value })}
                         />
                       ))}
                     </OddsSection>
                   )}
 
                   {selectedMatchData.odds.totalGoals.length > 0 && (
-                    <OddsSection title="总进球" columns="grid-cols-4">
+                    <OddsSection title="总进球" columns="grid-cols-8">
                       {selectedMatchData.odds.totalGoals.map((g) => (
                         <OddsPickButton key={g.label} label={g.label} odds={g.value}
                           selected={singleSelections.some((s) => s.betMarket === "TOTAL_GOALS" && s.selectedOption === g.label)}
@@ -413,12 +413,12 @@ export default function BetManagementPage() {
                     </OddsSection>
                   )}
 
-                  {selectedMatchData.odds.correctScore.length > 0 && (
-                    <OddsSection title="比分" columns="grid-cols-4">
-                      {selectedMatchData.odds.correctScore.map((s) => (
-                        <OddsPickButton key={s.label} label={s.label} odds={s.value}
-                          selected={singleSelections.some((sel) => sel.betMarket === "CORRECT_SCORE" && sel.selectedOption === s.label)}
-                          onClick={() => addSingleSelection({ matchId: selectedMatchData.id, homeTeam: selectedMatchData.homeTeam, awayTeam: selectedMatchData.awayTeam, betMarket: "CORRECT_SCORE", selectedOption: s.label, odds: s.value })}
+                  {selectedMatchData.odds.halfFull.length > 0 && (
+                    <OddsSection title="半全场" columns="grid-cols-3">
+                      {selectedMatchData.odds.halfFull.map((o) => (
+                        <OddsPickButton key={o.label} label={o.label} odds={o.value}
+                          selected={singleSelections.some((s) => s.betMarket === "HALF_FULL" && s.selectedOption === o.label)}
+                          onClick={() => addSingleSelection({ matchId: selectedMatchData.id, homeTeam: selectedMatchData.homeTeam, awayTeam: selectedMatchData.awayTeam, betMarket: "HALF_FULL", selectedOption: o.label, odds: o.value })}
                         />
                       ))}
                     </OddsSection>
@@ -535,19 +535,19 @@ export default function BetManagementPage() {
                                 </OddsSection>
                               )}
 
-                              {match.odds.halfFull.length > 0 && (
-                                <OddsSection title="半全场" columns="grid-cols-3">
-                                  {match.odds.halfFull.map((o) => (
-                                    <OddsPickButton key={o.label} label={o.label} odds={o.value}
-                                      selected={picked?.betMarket === "HALF_FULL" && picked?.selectedOption === o.label}
-                                      onClick={() => toggleParlayItem({ matchId: match.id, homeTeam: match.homeTeam, awayTeam: match.awayTeam, betMarket: "HALF_FULL", selectedOption: o.label, odds: o.value })}
+                              {match.odds.correctScore.length > 0 && (
+                                <OddsSection title="猜比分" columns="grid-cols-7">
+                                  {match.odds.correctScore.map((s) => (
+                                    <OddsPickButton key={s.label} label={s.label} odds={s.value}
+                                      selected={picked?.betMarket === "CORRECT_SCORE" && picked?.selectedOption === s.label}
+                                      onClick={() => toggleParlayItem({ matchId: match.id, homeTeam: match.homeTeam, awayTeam: match.awayTeam, betMarket: "CORRECT_SCORE", selectedOption: s.label, odds: s.value })}
                                     />
                                   ))}
                                 </OddsSection>
                               )}
 
                               {match.odds.totalGoals.length > 0 && (
-                                <OddsSection title="总进球" columns="grid-cols-4">
+                                <OddsSection title="总进球" columns="grid-cols-8">
                                   {match.odds.totalGoals.map((g) => (
                                     <OddsPickButton key={g.label} label={g.label} odds={g.value}
                                       selected={picked?.betMarket === "TOTAL_GOALS" && picked?.selectedOption === g.label}
@@ -557,12 +557,12 @@ export default function BetManagementPage() {
                                 </OddsSection>
                               )}
 
-                              {match.odds.correctScore.length > 0 && (
-                                <OddsSection title="比分" columns="grid-cols-4">
-                                  {match.odds.correctScore.map((s) => (
-                                    <OddsPickButton key={s.label} label={s.label} odds={s.value}
-                                      selected={picked?.betMarket === "CORRECT_SCORE" && picked?.selectedOption === s.label}
-                                      onClick={() => toggleParlayItem({ matchId: match.id, homeTeam: match.homeTeam, awayTeam: match.awayTeam, betMarket: "CORRECT_SCORE", selectedOption: s.label, odds: s.value })}
+                              {match.odds.halfFull.length > 0 && (
+                                <OddsSection title="半全场" columns="grid-cols-3">
+                                  {match.odds.halfFull.map((o) => (
+                                    <OddsPickButton key={o.label} label={o.label} odds={o.value}
+                                      selected={picked?.betMarket === "HALF_FULL" && picked?.selectedOption === o.label}
+                                      onClick={() => toggleParlayItem({ matchId: match.id, homeTeam: match.homeTeam, awayTeam: match.awayTeam, betMarket: "HALF_FULL", selectedOption: o.label, odds: o.value })}
                                     />
                                   ))}
                                 </OddsSection>

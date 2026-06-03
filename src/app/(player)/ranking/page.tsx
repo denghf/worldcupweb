@@ -74,11 +74,11 @@ export default function RankingPage() {
 
   return (
     <div className="bg-pattern px-3 pb-4">
-      <section className="-mx-3 mb-3 bg-gradient-to-r from-accent to-red-dim text-white">
+      <section className="-mx-3 mb-3 bg-gradient-to-r from-accent to-red-dim text-white" style={{ aspectRatio: "980/400" }}>
         <img
           src="/banner-ranking.png"
           alt="竞猜排行榜"
-          className="w-full"
+          className="h-full w-full object-cover"
           onError={(e) => {
             (e.target as HTMLImageElement).style.display = "none";
           }}

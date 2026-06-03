@@ -559,45 +559,12 @@ export default function AdminTournamentsPage() {
               </div>
             </div>
 
-            {/* Half/Full */}
-            <div>
-              <label className="text-sm text-text-secondary mb-2 block font-medium">半全场</label>
-              <div className="grid grid-cols-3 gap-2">
-                {([
-                  ["hf_胜胜", "胜-胜"], ["hf_胜平", "胜-平"], ["hf_胜负", "胜-负"],
-                  ["hf_平胜", "平-胜"], ["hf_平平", "平-平"], ["hf_平负", "平-负"],
-                  ["hf_负胜", "负-胜"], ["hf_负平", "负-平"], ["hf_负负", "负-负"],
-                ] as const).map(([key, label]) => (
-                  <div key={key}>
-                    <span className="text-sm text-text-muted block mb-1">{label}</span>
-                    <input type="number" step="0.01" value={oddsForm[key] || ""} onChange={(e) => setOddsForm({ ...oddsForm, [key]: e.target.value })} className="input-field w-full rounded-lg px-3 py-2 text-sm" placeholder="0.00" />
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Total Goals */}
-            <div>
-              <label className="text-sm text-text-secondary mb-2 block font-medium">总进球数</label>
-              <div className="grid grid-cols-4 gap-2">
-                {([
-                  ["tg_0球", "0球"], ["tg_1球", "1球"], ["tg_2球", "2球"], ["tg_3球", "3球"],
-                  ["tg_4球", "4球"], ["tg_5球", "5球"], ["tg_6球", "6球"], ["tg_7+", "7+"],
-                ] as const).map(([key, label]) => (
-                  <div key={key}>
-                    <span className="text-sm text-text-muted block mb-1">{label}</span>
-                    <input type="number" step="0.01" value={oddsForm[key] || ""} onChange={(e) => setOddsForm({ ...oddsForm, [key]: e.target.value })} className="input-field w-full rounded-lg px-3 py-2 text-sm" placeholder="0.00" />
-                  </div>
-                ))}
-              </div>
-            </div>
-
             {/* Correct Score */}
             <div>
               <label className="text-sm text-text-secondary mb-2 block font-medium">猜比分</label>
               <div className="space-y-1.5">
                 <span className="text-sm text-accent">主胜</span>
-                <div className="grid grid-cols-6 gap-1.5">
+                <div className="grid grid-cols-7 gap-1.5">
                   {([
                     ["cs_1:0", "1:0"], ["cs_2:0", "2:0"], ["cs_2:1", "2:1"], ["cs_3:0", "3:0"],
                     ["cs_3:1", "3:1"], ["cs_3:2", "3:2"], ["cs_4:0", "4:0"], ["cs_4:1", "4:1"],
@@ -610,7 +577,7 @@ export default function AdminTournamentsPage() {
                   ))}
                 </div>
                 <span className="text-sm text-yellow-500">平局</span>
-                <div className="grid grid-cols-6 gap-1.5">
+                <div className="grid grid-cols-7 gap-1.5">
                   {([
                     ["cs_0:0", "0:0"], ["cs_1:1", "1:1"], ["cs_2:2", "2:2"], ["cs_3:3", "3:3"],
                   ] as const).map(([key, label]) => (
@@ -621,7 +588,7 @@ export default function AdminTournamentsPage() {
                   ))}
                 </div>
                 <span className="text-sm text-red">客胜</span>
-                <div className="grid grid-cols-6 gap-1.5">
+                <div className="grid grid-cols-7 gap-1.5">
                   {([
                     ["cs_0:1", "0:1"], ["cs_0:2", "0:2"], ["cs_1:2", "1:2"], ["cs_0:3", "0:3"],
                     ["cs_1:3", "1:3"], ["cs_2:3", "2:3"], ["cs_0:4", "0:4"], ["cs_1:4", "1:4"],
@@ -643,6 +610,39 @@ export default function AdminTournamentsPage() {
                     </div>
                   ))}
                 </div>
+              </div>
+            </div>
+
+            {/* Total Goals */}
+            <div>
+              <label className="text-sm text-text-secondary mb-2 block font-medium">总进球数</label>
+              <div className="grid grid-cols-8 gap-2">
+                {([
+                  ["tg_0球", "0球"], ["tg_1球", "1球"], ["tg_2球", "2球"], ["tg_3球", "3球"],
+                  ["tg_4球", "4球"], ["tg_5球", "5球"], ["tg_6球", "6球"], ["tg_7+", "7+"],
+                ] as const).map(([key, label]) => (
+                  <div key={key}>
+                    <span className="text-sm text-text-muted block mb-1">{label}</span>
+                    <input type="number" step="0.01" value={oddsForm[key] || ""} onChange={(e) => setOddsForm({ ...oddsForm, [key]: e.target.value })} className="input-field w-full rounded-lg px-3 py-2 text-sm" placeholder="0.00" />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Half/Full */}
+            <div>
+              <label className="text-sm text-text-secondary mb-2 block font-medium">半全场</label>
+              <div className="grid grid-cols-3 gap-2">
+                {([
+                  ["hf_胜胜", "胜-胜"], ["hf_胜平", "胜-平"], ["hf_胜负", "胜-负"],
+                  ["hf_平胜", "平-胜"], ["hf_平平", "平-平"], ["hf_平负", "平-负"],
+                  ["hf_负胜", "负-胜"], ["hf_负平", "负-平"], ["hf_负负", "负-负"],
+                ] as const).map(([key, label]) => (
+                  <div key={key}>
+                    <span className="text-sm text-text-muted block mb-1">{label}</span>
+                    <input type="number" step="0.01" value={oddsForm[key] || ""} onChange={(e) => setOddsForm({ ...oddsForm, [key]: e.target.value })} className="input-field w-full rounded-lg px-3 py-2 text-sm" placeholder="0.00" />
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -769,7 +769,7 @@ export default function AdminTournamentsPage() {
 function Modal({ title, children, onClose, wide }: { title: string; children: React.ReactNode; onClose: () => void; wide?: boolean }) {
   return (
     <div className="fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4">
-      <div className={`bg-bg-surface w-full rounded-2xl p-6 animate-fade-in-up ${wide ? "max-w-lg" : "max-w-md"}`}>
+      <div className={`bg-bg-surface w-full rounded-2xl p-6 animate-fade-in-up ${wide ? "max-w-[750px]" : "max-w-md"}`}>
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-display text-base font-semibold">{title}</h3>
           <button onClick={onClose} className="text-text-muted hover:text-text-secondary">
