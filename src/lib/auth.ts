@@ -33,7 +33,7 @@ export async function setTokenCookie(token: string) {
   const cookieStore = await cookies();
   cookieStore.set(TOKEN_NAME, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: false,
     sameSite: "lax",
     maxAge: TOKEN_MAX_AGE,
     path: "/",
