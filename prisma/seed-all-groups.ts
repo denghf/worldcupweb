@@ -151,13 +151,22 @@ const GROUPS = [
 ];
 
 async function main() {
-  const tournament = await prisma.tournament.findFirst({
+  let tournament = await prisma.tournament.findFirst({
     where: { name: { contains: "2026" } },
   });
 
   if (!tournament) {
-    console.error("Tournament not found");
-    process.exit(1);
+    tournament = await prisma.tournament.create({
+      data: {
+        name: "2026 FIFA World Cup",
+        leagueId: 1,
+        season: "2026",
+        startDate: new Date("2026-06-11"),
+        endDate: new Date("2026-07-19"),
+        status: "ACTIVE",
+      },
+    });
+    console.log("Created tournament:", tournament.name);
   }
 
   // Clean up
