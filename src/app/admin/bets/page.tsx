@@ -21,6 +21,8 @@ interface Player {
   id: number;
   nickname: string;
   username: string;
+  role: string;
+  status?: string;
 }
 
 interface Bet {
@@ -57,7 +59,7 @@ const X1X_LABELS: Record<string, string> = { home: "胜", draw: "平", away: "�
 const HANDICAP_LABELS: Record<string, string> = { home: "让胜", draw: "让平", away: "让负" };
 
 export default function BetManagementPage() {
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useState(true);
   const [mode, setMode] = useState<"single" | "parlay">("single");
   const [matches, setMatches] = useState<Match[]>([]);
   const [players, setPlayers] = useState<Player[]>([]);
@@ -76,9 +78,13 @@ export default function BetManagementPage() {
   const [parlayMatchIds, setParlayMatchIds] = useState<number[]>([]);
   const [parlayItems, setParlayItems] = useState<BetItem[]>([]);
   const [parlayAmount, setParlayAmount] = useState("");
-  const [expandedParlay, setExpandedParlay] = useState<number | null>(null);
+  const [expandedParlayIds, setExpandedParlayIds] = useState<number[]>([]);
 
-  const upcoming = matches.filter((m) => m.status === "UPCOMING");
+  const selectablePlayers = players.filter((p) => p.role !== "ADMIN");
+  const bettableMatches = matches
+    .filter((m) => m.status === "UPCOMING" && new Date(m.kickoffTime).getTime() > Date.now())
+    .sort((a, b) => new Date(a.kickoffTime).getTime() - new Date(b.kickoffTime).getTime());
+  const singleBettableMatches = bettableMatches.slice(0, 6);
 
   useEffect(() => {
     loadData();
@@ -108,7 +114,7 @@ export default function BetManagementPage() {
     setParlayMatchIds([]);
     setParlayItems([]);
     setParlayAmount("");
-    setExpandedParlay(null);
+    setExpandedParlayIds([]);
   };
 
   // --- Single mode handlers ---
@@ -133,6 +139,8 @@ export default function BetManagementPage() {
 
   const handleSingleSubmit = async () => {
     if (!selectedPlayer || singleSelections.length === 0) return;
+    const bettableIds = new Set(bettableMatches.map((m) => m.id));
+    if (singleSelections.some((s) => !bettableIds.has(s.matchId))) return alert("所选比赛已不可下注，请重新选择");
     const validSelections = singleSelections.filter((s) => Number(s.amount) > 0);
     if (validSelections.length === 0) return alert("请填写金额");
     setSubmitting(true);
@@ -154,7 +162,6 @@ export default function BetManagementPage() {
       if (failed) {
         alert((failed as { error?: string }).error || "录入失败");
       } else {
-        setShowForm(false);
         resetForm();
         loadData();
       }
@@ -168,9 +175,16 @@ export default function BetManagementPage() {
   // --- Parlay mode handlers ---
 
   const toggleParlayMatch = (matchId: number) => {
-    setParlayMatchIds((prev) =>
-      prev.includes(matchId) ? prev.filter((id) => id !== matchId) : [...prev, matchId]
-    );
+    setParlayMatchIds((prev) => {
+      const isSelected = prev.includes(matchId);
+      return isSelected ? prev.filter((id) => id !== matchId) : [...prev, matchId];
+    });
+    setExpandedParlayIds((prev) => {
+      const isExpanded = prev.includes(matchId);
+      const isSelected = parlayMatchIds.includes(matchId);
+      if (isSelected) return prev.filter((id) => id !== matchId);
+      return isExpanded ? prev : [...prev, matchId];
+    });
     setParlayItems((prev) => prev.filter((p) => p.matchId !== matchId));
   };
 
@@ -190,6 +204,8 @@ export default function BetManagementPage() {
 
   const handleParlaySubmit = async () => {
     if (!selectedPlayer || parlayItems.length < 2 || !parlayAmount) return;
+    const bettableIds = new Set(bettableMatches.map((m) => m.id));
+    if (parlayItems.some((item) => !bettableIds.has(item.matchId))) return alert("所选比赛已不可下注，请重新选择");
     setSubmitting(true);
     try {
       const res = await fetch("/api/admin/bets", {
@@ -207,7 +223,6 @@ export default function BetManagementPage() {
       });
       const data = await res.json();
       if (data.success) {
-        setShowForm(false);
         resetForm();
         loadData();
       } else {
@@ -238,13 +253,6 @@ export default function BetManagementPage() {
     } catch {
       alert("网络错误");
     }
-  };
-
-  const STATUS_MAP: Record<string, { label: string; cls: string }> = {
-    APPROVED: { label: "已下注", cls: "bg-accent/10 text-accent" },
-    WON: { label: "已中奖", cls: "bg-green/10 text-green" },
-    LOST: { label: "未中奖", cls: "bg-red/10 text-red" },
-    CANCELLED: { label: "已取消", cls: "bg-text-muted/10 text-text-muted" },
   };
 
   const selectedMatchData = singleMatch ? matches.find((m) => m.id === singleMatch) : null;
@@ -327,12 +335,35 @@ export default function BetManagementPage() {
           {/* Player */}
           <div className="mb-4">
             <label className="text-sm text-text-secondary mb-2 block">选择玩家</label>
-            <select value={selectedPlayer} onChange={(e) => setSelectedPlayer(e.target.value)} className="input-field w-full rounded-lg px-3 py-2 text-sm">
-              <option value="">选择玩家...</option>
-              {players.map((p) => (
-                <option key={p.id} value={p.id}>{p.nickname}</option>
-              ))}
-            </select>
+            {selectablePlayers.length === 0 ? (
+              <div className="text-text-muted text-sm bg-bg-primary rounded-lg p-3">暂无可选择的玩家</div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                {selectablePlayers.map((p) => {
+                  const value = String(p.id);
+                  const checked = selectedPlayer === value;
+                  return (
+                    <label
+                      key={p.id}
+                      className={`flex items-center gap-2 rounded-lg border px-3 py-2 cursor-pointer transition-colors ${
+                        checked ? "border-accent/50 bg-accent/10 text-accent" : "border-border bg-bg-primary hover:bg-bg-hover"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => setSelectedPlayer(checked ? "" : value)}
+                        className="w-3.5 h-3.5 rounded accent-accent"
+                      />
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-medium">{p.nickname}</span>
+                        <span className="block truncate text-xs text-text-muted">@{p.username}</span>
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Mode tabs */}
@@ -345,45 +376,57 @@ export default function BetManagementPage() {
             </button>
           </div>
 
-          {upcoming.length === 0 ? (
+          {bettableMatches.length === 0 ? (
             <div className="text-text-muted text-sm bg-bg-primary rounded-lg p-3">暂无可下注的比赛，请先添加赛事和赔率</div>
           ) : mode === "single" ? (
             /* ========== SINGLE MODE ========== */
             <div>
               <div className="mb-3">
-                <label className="text-sm text-text-secondary mb-2 block">选择比赛</label>
-                <select
-                  value={singleMatch ?? ""}
-                  onChange={(e) => { setSingleMatch(Number(e.target.value) || null); setSingleSelections([]); }}
-                  className="input-field w-full rounded-lg px-3 py-2 text-sm"
-                >
-                  <option value="">选择比赛...</option>
-                  {upcoming.map((m) => (
-                    <option key={m.id} value={m.id}>{m.homeTeam} vs {m.awayTeam}</option>
-                  ))}
-                </select>
+                <label className="text-sm text-text-secondary mb-2 block">选择比赛（最近 6 场）</label>
+                {singleBettableMatches.length === 0 ? (
+                  <div className="text-text-muted text-sm bg-bg-primary rounded-lg p-3">暂无可下注比赛</div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    {singleBettableMatches.map((m) => {
+                      const checked = singleMatch === m.id;
+                      return (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => setSingleMatch(m.id)}
+                          className={`rounded-lg border px-3 py-2 text-left transition-colors ${
+                            checked ? "border-accent/50 bg-accent/10 text-accent" : "border-border bg-bg-primary hover:bg-bg-hover"
+                          }`}
+                        >
+                          <div className="truncate text-sm font-medium">{m.homeTeam} vs {m.awayTeam}</div>
+                          <div className="mt-0.5 text-xs text-text-muted">{formatMatchTime(m.kickoffTime)}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               {selectedMatchData && (
                 <div className="bg-bg-primary rounded-lg p-3 mb-3 space-y-1">
                   <div className="text-sm font-medium mb-2">{selectedMatchData.homeTeam} vs {selectedMatchData.awayTeam}</div>
 
-                  <OddsSection title="胜平负" columns="grid-cols-3">
+                  <OddsSection title="胜平负" columns="grid-cols-3" key={`single-${selectedMatchData.id}-x1x`}>
                     {Object.entries(selectedMatchData.odds.x1x).map(([key, odds]) => (
                       <OddsPickButton key={key} label={X1X_LABELS[key] || key} odds={odds}
-                        selected={singleSelections.some((s) => s.betMarket === "X1X" && s.selectedOption === key)}
+                        selected={singleSelections.some((s) => s.matchId === selectedMatchData.id && s.betMarket === "X1X" && s.selectedOption === key)}
                         onClick={() => addSingleSelection({ matchId: selectedMatchData.id, homeTeam: selectedMatchData.homeTeam, awayTeam: selectedMatchData.awayTeam, betMarket: "X1X", selectedOption: key, odds })}
                       />
                     ))}
                   </OddsSection>
 
                   {Object.keys(selectedMatchData.odds.handicapX1x).length > 0 && (
-                    <OddsSection title="让球胜平负" columns="grid-cols-3">
+                    <OddsSection title="让球胜平负" columns="grid-cols-3" key={`single-${selectedMatchData.id}-handicap`}>
                       {Object.entries(selectedMatchData.odds.handicapX1x).map(([key, odds]) => {
                         const [handicap, option] = key.includes(":") ? key.split(":") : ["", key];
                         return (
                           <OddsPickButton key={key} label={`${handicap}${HANDICAP_LABELS[option] || option}`} odds={odds}
-                            selected={singleSelections.some((s) => s.betMarket === "HANDICAP_X1X" && s.selectedOption === key)}
+                            selected={singleSelections.some((s) => s.matchId === selectedMatchData.id && s.betMarket === "HANDICAP_X1X" && s.selectedOption === key)}
                             onClick={() => addSingleSelection({ matchId: selectedMatchData.id, homeTeam: selectedMatchData.homeTeam, awayTeam: selectedMatchData.awayTeam, betMarket: "HANDICAP_X1X", selectedOption: key, odds })}
                           />
                         );
@@ -392,10 +435,10 @@ export default function BetManagementPage() {
                   )}
 
                   {selectedMatchData.odds.correctScore.length > 0 && (
-                    <OddsSection title="猜比分" columns="grid-cols-7">
+                    <OddsSection title="猜比分" columns="grid-cols-7" key={`single-${selectedMatchData.id}-score`}>
                       {selectedMatchData.odds.correctScore.map((s) => (
                         <OddsPickButton key={s.label} label={s.label} odds={s.value}
-                          selected={singleSelections.some((sel) => sel.betMarket === "CORRECT_SCORE" && sel.selectedOption === s.label)}
+                          selected={singleSelections.some((sel) => sel.matchId === selectedMatchData.id && sel.betMarket === "CORRECT_SCORE" && sel.selectedOption === s.label)}
                           onClick={() => addSingleSelection({ matchId: selectedMatchData.id, homeTeam: selectedMatchData.homeTeam, awayTeam: selectedMatchData.awayTeam, betMarket: "CORRECT_SCORE", selectedOption: s.label, odds: s.value })}
                         />
                       ))}
@@ -403,10 +446,10 @@ export default function BetManagementPage() {
                   )}
 
                   {selectedMatchData.odds.totalGoals.length > 0 && (
-                    <OddsSection title="总进球" columns="grid-cols-8">
+                    <OddsSection title="总进球" columns="grid-cols-8" key={`single-${selectedMatchData.id}-goals`}>
                       {selectedMatchData.odds.totalGoals.map((g) => (
                         <OddsPickButton key={g.label} label={g.label} odds={g.value}
-                          selected={singleSelections.some((s) => s.betMarket === "TOTAL_GOALS" && s.selectedOption === g.label)}
+                          selected={singleSelections.some((s) => s.matchId === selectedMatchData.id && s.betMarket === "TOTAL_GOALS" && s.selectedOption === g.label)}
                           onClick={() => addSingleSelection({ matchId: selectedMatchData.id, homeTeam: selectedMatchData.homeTeam, awayTeam: selectedMatchData.awayTeam, betMarket: "TOTAL_GOALS", selectedOption: g.label, odds: g.value })}
                         />
                       ))}
@@ -414,10 +457,10 @@ export default function BetManagementPage() {
                   )}
 
                   {selectedMatchData.odds.halfFull.length > 0 && (
-                    <OddsSection title="半全场" columns="grid-cols-3">
+                    <OddsSection title="半全场" columns="grid-cols-3" key={`single-${selectedMatchData.id}-half-full`}>
                       {selectedMatchData.odds.halfFull.map((o) => (
                         <OddsPickButton key={o.label} label={o.label} odds={o.value}
-                          selected={singleSelections.some((s) => s.betMarket === "HALF_FULL" && s.selectedOption === o.label)}
+                          selected={singleSelections.some((s) => s.matchId === selectedMatchData.id && s.betMarket === "HALF_FULL" && s.selectedOption === o.label)}
                           onClick={() => addSingleSelection({ matchId: selectedMatchData.id, homeTeam: selectedMatchData.homeTeam, awayTeam: selectedMatchData.awayTeam, betMarket: "HALF_FULL", selectedOption: o.label, odds: o.value })}
                         />
                       ))}
@@ -431,11 +474,14 @@ export default function BetManagementPage() {
                 <div className="space-y-2 mb-4">
                   <div className="text-xs text-text-secondary font-medium">已选 {singleSelections.length} 项</div>
                   {singleSelections.map((sel, idx) => (
-                    <div key={`${sel.betMarket}-${sel.selectedOption}`} className="flex items-center gap-2 bg-bg-primary rounded-lg px-3 py-2">
+                    <div key={`${sel.matchId}-${sel.betMarket}-${sel.selectedOption}`} className="flex items-center gap-2 bg-bg-primary rounded-lg px-3 py-2">
                       <div className="flex-1 min-w-0">
-                        <span className="text-xs">{MARKET_NAMES[sel.betMarket]}</span>
-                        <span className="text-xs text-accent ml-1">{formatOptionLabel(sel.betMarket, sel.selectedOption)}</span>
-                        <span className="text-xs text-text-muted ml-1">@ {sel.odds.toFixed(2)}</span>
+                        <div className="truncate text-xs font-medium text-text-secondary">{sel.homeTeam} vs {sel.awayTeam}</div>
+                        <div>
+                          <span className="text-xs">{MARKET_NAMES[sel.betMarket]}</span>
+                          <span className="text-xs text-accent ml-1">{formatOptionLabel(sel.betMarket, sel.selectedOption)}</span>
+                          <span className="text-xs text-text-muted ml-1">@ {sel.odds.toFixed(2)}</span>
+                        </div>
                       </div>
                       <input
                         type="number" value={sel.amount} onChange={(e) => updateSingleAmount(idx, e.target.value)}
@@ -461,7 +507,7 @@ export default function BetManagementPage() {
                   {parlayMatchIds.length > 0 && <span className="text-accent ml-2">已选 {parlayMatchIds.length} 场</span>}
                 </label>
                 <div className="bg-bg-primary rounded-lg max-h-48 overflow-y-auto">
-                  {upcoming.map((m) => {
+                  {bettableMatches.map((m) => {
                     const checked = parlayMatchIds.includes(m.id);
                     return (
                       <label key={m.id} className="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-bg-hover transition-colors border-b border-border/30 last:border-0">
@@ -486,11 +532,11 @@ export default function BetManagementPage() {
                       const match = matches.find((m) => m.id === matchId);
                       if (!match) return null;
                       const picked = parlayItems.find((p) => p.matchId === matchId);
-                      const isOpen = expandedParlay === matchId;
+                      const isOpen = expandedParlayIds.includes(matchId);
                       return (
                         <div key={matchId} className="bg-bg-primary rounded-lg overflow-hidden">
                           <button
-                            onClick={() => setExpandedParlay(isOpen ? null : matchId)}
+                            onClick={() => setExpandedParlayIds((prev) => isOpen ? prev.filter((id) => id !== matchId) : [...prev, matchId])}
                             className="w-full px-3 py-2.5 flex items-center justify-between text-left"
                           >
                             <div className="flex items-center gap-2">
@@ -512,7 +558,7 @@ export default function BetManagementPage() {
 
                           {isOpen && (
                             <div className="px-3 pb-3 space-y-2">
-                              <OddsSection title="胜平负" columns="grid-cols-3">
+                              <OddsSection title="胜平负" columns="grid-cols-3" key={`parlay-${match.id}-x1x`}>
                                 {Object.entries(match.odds.x1x).map(([key, odds]) => (
                                   <OddsPickButton key={key} label={X1X_LABELS[key] || key} odds={odds}
                                     selected={picked?.betMarket === "X1X" && picked?.selectedOption === key}
@@ -522,7 +568,7 @@ export default function BetManagementPage() {
                               </OddsSection>
 
                               {Object.keys(match.odds.handicapX1x).length > 0 && (
-                                <OddsSection title="让球胜平负" columns="grid-cols-3">
+                                <OddsSection title="让球胜平负" columns="grid-cols-3" key={`parlay-${match.id}-handicap`}>
                                   {Object.entries(match.odds.handicapX1x).map(([key, odds]) => {
                                     const [handicap, option] = key.includes(":") ? key.split(":") : ["", key];
                                     return (
@@ -536,7 +582,7 @@ export default function BetManagementPage() {
                               )}
 
                               {match.odds.correctScore.length > 0 && (
-                                <OddsSection title="猜比分" columns="grid-cols-7">
+                                <OddsSection title="猜比分" columns="grid-cols-7" key={`parlay-${match.id}-score`}>
                                   {match.odds.correctScore.map((s) => (
                                     <OddsPickButton key={s.label} label={s.label} odds={s.value}
                                       selected={picked?.betMarket === "CORRECT_SCORE" && picked?.selectedOption === s.label}
@@ -547,7 +593,7 @@ export default function BetManagementPage() {
                               )}
 
                               {match.odds.totalGoals.length > 0 && (
-                                <OddsSection title="总进球" columns="grid-cols-8">
+                                <OddsSection title="总进球" columns="grid-cols-8" key={`parlay-${match.id}-goals`}>
                                   {match.odds.totalGoals.map((g) => (
                                     <OddsPickButton key={g.label} label={g.label} odds={g.value}
                                       selected={picked?.betMarket === "TOTAL_GOALS" && picked?.selectedOption === g.label}
@@ -558,7 +604,7 @@ export default function BetManagementPage() {
                               )}
 
                               {match.odds.halfFull.length > 0 && (
-                                <OddsSection title="半全场" columns="grid-cols-3">
+                                <OddsSection title="半全场" columns="grid-cols-3" key={`parlay-${match.id}-half-full`}>
                                   {match.odds.halfFull.map((o) => (
                                     <OddsPickButton key={o.label} label={o.label} odds={o.value}
                                       selected={picked?.betMarket === "HALF_FULL" && picked?.selectedOption === o.label}
@@ -641,11 +687,31 @@ export default function BetManagementPage() {
   );
 }
 
+function formatMatchTime(kickoffTime: string) {
+  return new Intl.DateTimeFormat("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(new Date(kickoffTime));
+}
+
 function OddsSection({ title, columns, children }: { title: string; columns: string; children: React.ReactNode }) {
+  const [expanded, setExpanded] = useState(true);
+
   return (
     <section>
-      <div className="mb-1.5 text-sm font-semibold text-text-muted">{title}</div>
-      <div className={`grid ${columns} gap-1`}>{children}</div>
+      <button
+        type="button"
+        onClick={() => setExpanded((value) => !value)}
+        aria-expanded={expanded}
+        className="mb-1.5 flex w-full items-center justify-between text-left text-sm font-semibold text-text-muted"
+      >
+        <span>{title}</span>
+        <span className={`transition-transform ${expanded ? "rotate-90" : ""}`}>›</span>
+      </button>
+      {expanded && <div className={`grid ${columns} gap-1`}>{children}</div>}
     </section>
   );
 }
