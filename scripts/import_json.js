@@ -216,7 +216,10 @@ async function main() {
         if (match) {
           await tx.match.update({
             where: { id: match.id },
-            data: { oddsUpdatedAt: imported.odds.length ? now : null },
+            data: {
+              kickoffTime: new Date(imported.kickoffTime),
+              oddsUpdatedAt: imported.odds.length ? now : null,
+            },
           });
           updated += 1;
         } else {
