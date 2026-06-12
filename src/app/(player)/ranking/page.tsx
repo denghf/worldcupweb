@@ -139,10 +139,11 @@ export default function RankingPage() {
       </div>
 
       <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
-        <div className="grid grid-cols-[42px_1fr_72px_72px_54px] border-b border-border px-3 py-2 text-[10px] font-bold text-text-muted">
+        <div className="grid grid-cols-[42px_1fr_60px_60px_60px_48px] border-b border-border px-3 py-2 text-[10px] font-bold text-text-muted">
           <span>排名</span>
           <span>用户</span>
           <span className="text-right">积分</span>
+          <span className="text-right">中奖额</span>
           <span className="text-right">投注额</span>
           <span className="text-right">命中率</span>
         </div>
@@ -160,7 +161,7 @@ function RankingRow({ player, index }: { player: Ranking; index: number }) {
   const medal = ["🥇", "🥈", "🥉"][player.rank - 1];
 
   return (
-    <div className={`grid grid-cols-[42px_1fr_72px_72px_54px] items-center border-b border-border/60 px-3 py-3 last:border-0 animate-fade-in-up stagger-${Math.min(index + 1, 5)}`}>
+    <div className={`grid grid-cols-[42px_1fr_60px_60px_60px_48px] items-center border-b border-border/60 px-3 py-3 last:border-0 animate-fade-in-up stagger-${Math.min(index + 1, 5)}`}>
       <div className="text-sm font-black text-text-secondary">
         {medal ? <span className="text-lg">{medal}</span> : <span className="num pl-1 text-xs">{player.rank}</span>}
       </div>
@@ -174,6 +175,7 @@ function RankingRow({ player, index }: { player: Ranking; index: number }) {
       <div className={`num text-right text-sm font-black ${player.netProfit >= 0 ? "text-accent" : "text-text-secondary"}`}>
         {player.netProfit >= 0 ? "+" : ""}{player.netProfit}
       </div>
+      <div className="num text-right text-xs font-bold text-accent">{player.totalWinAmount}</div>
       <div className="num text-right text-xs font-bold text-text-secondary">{player.totalBetAmount}</div>
       <div className="num text-right text-xs font-bold text-text-secondary">{player.winRate}%</div>
     </div>

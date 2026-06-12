@@ -90,6 +90,10 @@ export default function AdminTournamentsPage() {
   const [importLoading, setImportLoading] = useState(false);
   const [importResult, setImportResult] = useState<string>("");
 
+  // 500.com fetch
+  const [fetch500Loading, setFetch500Loading] = useState(false);
+  const [fetchResultsLoading, setFetchResultsLoading] = useState(false);
+
   useEffect(() => {
     loadData();
   }, []);
@@ -159,6 +163,51 @@ export default function AdminTournamentsPage() {
       }
     } catch {
       alert("网络错误");
+    }
+  };
+
+  const handleFetch500 = async () => {
+    if (fetch500Loading) return;
+    const date = prompt("请输入日期 (YYYY-MM-DD)：", new Date().toISOString().slice(0, 10));
+    if (!date) return;
+    setFetch500Loading(true);
+    try {
+      const res = await fetch("/api/admin/import/500", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ date }) });
+      const data = await res.json();
+      if (data.success) {
+        const { fetched, updated, created } = data.data;
+        alert(`抓取 ${fetched} 场，更新 ${updated} 场，新建 ${created} 场`);
+        loadData();
+      } else {
+        alert(data.error || "抓取失败");
+      }
+    } catch {
+      alert("网络错误");
+    } finally {
+      setFetch500Loading(false);
+    }
+  };
+
+  const handleFetchResults = async () => {
+    if (fetchResultsLoading) return;
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    const date = prompt("请输入日期 (YYYY-MM-DD)：", yesterday);
+    if (!date) return;
+    setFetchResultsLoading(true);
+    try {
+      const res = await fetch("/api/admin/import/results", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ date }) });
+      const data = await res.json();
+      if (data.success) {
+        const { fetched, settled, skipped } = data.data;
+        alert(`抓取 ${fetched} 场赛果，已结算 ${settled} 场，跳过 ${skipped ?? 0} 场`);
+        loadData();
+      } else {
+        alert(data.error || "抓取失败");
+      }
+    } catch {
+      alert("网络错误");
+    } finally {
+      setFetchResultsLoading(false);
     }
   };
 
@@ -339,6 +388,20 @@ export default function AdminTournamentsPage() {
           <p className="text-text-muted text-sm mt-1">管理赛事、比赛和赔率</p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={handleFetch500}
+            disabled={fetch500Loading}
+            className="px-4 py-2 rounded-lg text-sm bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-colors disabled:opacity-40"
+          >
+            {fetch500Loading ? "抓取中..." : "更新世界杯赔率"}
+          </button>
+          <button
+            onClick={handleFetchResults}
+            disabled={fetchResultsLoading}
+            className="px-4 py-2 rounded-lg text-sm bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors disabled:opacity-40"
+          >
+            {fetchResultsLoading ? "抓取中..." : "更新赛果"}
+          </button>
           <button
             onClick={handleDedup}
             className="px-4 py-2 rounded-lg text-sm bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors"
