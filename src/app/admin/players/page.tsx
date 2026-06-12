@@ -10,6 +10,7 @@ interface Player {
   totalBets: number;
   totalBetAmount: number;
   totalWonBets: number;
+  totalWinAmount: number;
   netProfit: number;
 }
 
@@ -194,6 +195,7 @@ export default function PlayersPage() {
                 <th className="text-right py-3 px-4 font-medium">下注数</th>
                 <th className="text-right py-3 px-4 font-medium">下注总额</th>
                 <th className="text-right py-3 px-4 font-medium">中奖数</th>
+                <th className="text-right py-3 px-4 font-medium">中奖总额</th>
                 <th className="text-right py-3 px-4 font-medium">盈亏</th>
                 <th className="text-right py-3 px-4 font-medium">操作</th>
               </tr>
@@ -246,6 +248,7 @@ export default function PlayersPage() {
                   <td className="py-3 px-4 text-right text-text-secondary">{player.totalBets}</td>
                   <td className="py-3 px-4 text-right text-text-secondary">{player.totalBetAmount}</td>
                   <td className="py-3 px-4 text-right text-text-secondary">{player.totalWonBets}</td>
+                  <td className="py-3 px-4 text-right text-text-secondary">{player.totalWinAmount}</td>
                   <td className={`py-3 px-4 text-right font-medium ${player.netProfit >= 0 ? "text-accent" : "text-red"}`}>
                     {player.netProfit >= 0 ? "+" : ""}{player.netProfit}
                   </td>

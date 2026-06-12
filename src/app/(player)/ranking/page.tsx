@@ -172,9 +172,9 @@ function RankingRow({ player, index }: { player: Ranking; index: number }) {
         </div>
       </div>
       <div className={`num text-right text-sm font-black ${player.netProfit >= 0 ? "text-accent" : "text-text-secondary"}`}>
-        {player.netProfit >= 0 ? "+" : ""}{Math.round(player.netProfit)}
+        {player.netProfit >= 0 ? "+" : ""}{player.netProfit}
       </div>
-      <div className="num text-right text-xs font-bold text-text-secondary">{Math.round(player.totalBetAmount)}</div>
+      <div className="num text-right text-xs font-bold text-text-secondary">{player.totalBetAmount}</div>
       <div className="num text-right text-xs font-bold text-text-secondary">{player.winRate}%</div>
     </div>
   );
