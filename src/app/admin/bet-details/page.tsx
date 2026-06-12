@@ -196,7 +196,7 @@ export default function BetDetailsPage() {
                           <span className="font-medium">下注 {bet.totalAmount}</span>
                         )}
                         {bet.status === "WON" && bet.actualPayout !== null && (
-                          <span className="text-accent font-semibold">奖励 +{Math.round(bet.actualPayout).toLocaleString()}</span>
+                          <span className="text-accent font-semibold">奖励 +{bet.actualPayout.toFixed(1)}</span>
                         )}
                       </div>
                     </div>
@@ -247,7 +247,7 @@ export default function BetDetailsPage() {
                       })}
                       <div className="flex items-center justify-between text-sm pt-1">
                         <span className="text-text-muted">潜在赔付</span>
-                        <span className="text-text-secondary">{Math.round(bet.potentialPayout).toLocaleString()}</span>
+                        <span className="text-text-secondary">{bet.potentialPayout.toFixed(1)}</span>
                       </div>
                     </div>
                   )}

@@ -100,7 +100,7 @@ export default function BetsPage() {
         <div className="grid grid-cols-3 gap-2">
           <SummaryCard label="已下注" value={approvedCount} />
           <SummaryCard label="已中奖" value={wonCount} highlight />
-          <SummaryCard label="总下注额" value={`${Math.round(totalAmount)}`} />
+          <SummaryCard label="总下注额" value={`${totalAmount.toFixed(1)}`} />
         </div>
       </section>
 
@@ -202,11 +202,11 @@ function BetCard({ bet, index }: { bet: Bet; index: number }) {
 }
 
 function PayoutLabel({ bet }: { bet: Bet }) {
-  const amount = Math.round(bet.totalAmount);
-  const potential = Math.round(bet.potentialPayout);
+  const amount = bet.totalAmount.toFixed(1);
+  const potential = bet.potentialPayout.toFixed(1);
 
   if (bet.status === "WON" && bet.actualPayout !== null) {
-    return <span className="shrink-0 text-right num text-xs font-bold text-accent">奖励:{Math.round(bet.actualPayout)}</span>;
+    return <span className="shrink-0 text-right num text-xs font-bold text-accent">奖励:{bet.actualPayout.toFixed(1)}</span>;
   }
   if (bet.status === "LOST") {
     return <span className="shrink-0 text-right num text-xs text-text-secondary">投注:{amount}</span>;

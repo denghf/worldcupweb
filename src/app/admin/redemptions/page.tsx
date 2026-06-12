@@ -48,7 +48,7 @@ export default function RedemptionsPage() {
         <div className="glass rounded-xl px-4 py-3">
           <div className="text-text-muted text-sm mb-1">中奖总额</div>
           <div className="text-xl font-bold text-accent">
-            {Math.round(totalPending).toLocaleString()}
+            {totalPending.toFixed(1)}
           </div>
         </div>
       </div>
@@ -85,9 +85,9 @@ export default function RedemptionsPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-3 text-sm">
-                  <span className="text-text-secondary">下注: {Math.round(win.betAmount).toLocaleString()}</span>
+                  <span className="text-text-secondary">下注: {win.betAmount.toFixed(1)}</span>
                   <span className="text-text-secondary">赔率: {win.lockedTotalOdds.toFixed(2)}</span>
-                  <span className="text-accent font-semibold">获奖: +{Math.round(win.winAmount).toLocaleString()}</span>
+                  <span className="text-accent font-semibold">获奖: +{win.winAmount.toFixed(1)}</span>
                 </div>
               </div>
               <div className="flex items-center justify-between">

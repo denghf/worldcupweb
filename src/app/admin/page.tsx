@@ -50,11 +50,11 @@ export default function AdminDashboard() {
     <div className="max-w-5xl space-y-6">
       {/* Stats cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard label="总下注额" value={`${Math.round(stats.totalBetAmount).toLocaleString()}`} />
-        <StatCard label="总赔付" value={`${Math.round(stats.totalPayout).toLocaleString()}`} color="accent" />
+        <StatCard label="总下注额" value={`${stats.totalBetAmount.toFixed(1)}`} />
+        <StatCard label="总赔付" value={`${stats.totalPayout.toFixed(1)}`} color="accent" />
         <StatCard
           label="平台盈利"
-          value={`${Math.round(stats.netProfit).toLocaleString()}`}
+          value={`${stats.netProfit.toFixed(1)}`}
           color={stats.netProfit >= 0 ? "accent" : "red"}
         />
         <StatCard label="总用户" value={String(stats.totalUsers)} />
@@ -95,7 +95,7 @@ export default function AdminDashboard() {
                     <td className="py-2.5 px-4">{user.nickname}</td>
                     <td className="py-2.5 px-4 text-right">{user.totalBets}</td>
                     <td className={`py-2.5 px-4 text-right font-medium ${user.netProfit >= 0 ? "text-accent" : "text-red"}`}>
-                      {user.netProfit >= 0 ? "+" : ""}{Math.round(user.netProfit)}
+                      {user.netProfit >= 0 ? "+" : ""}{user.netProfit.toFixed(1)}
                     </td>
                   </tr>
                 ))}
