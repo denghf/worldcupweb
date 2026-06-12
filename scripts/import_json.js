@@ -70,6 +70,11 @@ function kickoffKey(date) {
   return new Date(date).getTime();
 }
 
+function dateKey(date) {
+  const d = new Date(date);
+  return `${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}`;
+}
+
 function readMatches(filePath) {
   const raw = fs.readFileSync(filePath, "utf8");
   const data = JSON.parse(raw);
@@ -114,6 +119,7 @@ function buildExistingIndexes(existingMatches) {
   const byExact = new Map();
   const byKickoff = new Map();
   const byTeamPair = new Map();
+  const byDateAndTeams = new Map();
 
   for (const match of existingMatches) {
     byApiMatchId.set(match.apiMatchId, match);
@@ -128,9 +134,14 @@ function buildExistingIndexes(existingMatches) {
     const pairMatches = byTeamPair.get(pair) ?? [];
     pairMatches.push(match);
     byTeamPair.set(pair, pairMatches);
+
+    const dk = `${dateKey(match.kickoffTime)}:${canonicalTeamName(match.homeTeam)}:${canonicalTeamName(match.awayTeam)}`;
+    const dkMatches = byDateAndTeams.get(dk) ?? [];
+    dkMatches.push(match);
+    byDateAndTeams.set(dk, dkMatches);
   }
 
-  return { byApiMatchId, byExact, byKickoff, byTeamPair };
+  return { byApiMatchId, byExact, byKickoff, byTeamPair, byDateAndTeams };
 }
 
 function resolveExistingMatch(importedMatch, indexes) {
@@ -145,6 +156,10 @@ function resolveExistingMatch(importedMatch, indexes) {
 
   const sameTeamPair = indexes.byTeamPair.get(teamPairKey(importedMatch)) ?? [];
   if (sameTeamPair.length === 1) return sameTeamPair[0];
+
+  const dk = `${dateKey(importedMatch.kickoffTime)}:${canonicalTeamName(importedMatch.homeTeam)}:${canonicalTeamName(importedMatch.awayTeam)}`;
+  const byDateTeams = indexes.byDateAndTeams.get(dk) ?? [];
+  if (byDateTeams.length === 1) return byDateTeams[0];
 
   return null;
 }
