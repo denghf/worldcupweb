@@ -95,6 +95,20 @@ python3 scripts/import_json.py --tournament-id 1 \
 - `betType` 仅限 `X1X` / `HANDICAP_X1X` / `HALF_FULL` / `TOTAL_GOALS` / `CORRECT_SCORE`
 - 自动检测同一比赛内重复的 `(betType, optionKey)`
 
+## 数据库备份与恢复
+
+备份：
+
+```bash
+docker exec worldcup-db-1 pg_dump -U hiqi hiqi > backup_$(date +%Y%m%d).sql
+```
+
+恢复：
+
+```bash
+cat backup_20260612.sql | docker exec -i worldcup-db-1 psql -U hiqi hiqi
+```
+
 ## Verification
 
 ```bash
