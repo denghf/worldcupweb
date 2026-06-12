@@ -146,6 +146,22 @@ export default function AdminTournamentsPage() {
     }
   };
 
+  const handleDedup = async () => {
+    if (!confirm("确认删除重复赛事？将保留较早创建的记录，删除重复项及其赔率和投注。")) return;
+    try {
+      const res = await fetch("/api/admin/tournaments/dedup", { method: "POST" });
+      const data = await res.json();
+      if (data.success) {
+        alert(data.data.deleted > 0 ? `已删除 ${data.data.deleted} 条重复赛事` : "没有重复赛事");
+        loadData();
+      } else {
+        alert(data.error || "清理失败");
+      }
+    } catch {
+      alert("网络错误");
+    }
+  };
+
   const openOddsModal = (match: Match) => {
     setSelectedMatch(match);
     const o = match.odds;
@@ -323,6 +339,12 @@ export default function AdminTournamentsPage() {
           <p className="text-text-muted text-sm mt-1">管理赛事、比赛和赔率</p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={handleDedup}
+            className="px-4 py-2 rounded-lg text-sm bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors"
+          >
+            删除重复赛事
+          </button>
           <button
             onClick={() => setShowImport(true)}
             className="px-4 py-2 rounded-lg text-sm bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
