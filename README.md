@@ -100,12 +100,13 @@ python3 scripts/import_json.py --tournament-id 1 \
 备份：
 
 ```bash
-docker exec worldcup-db-1 pg_dump -U hiqi hiqi > backup_$(date +%Y%m%d).sql
+docker exec worldcup-db-1 pg_dump -U hiqi --clean hiqi > backup_$(date +%Y%m%d).sql
 ```
 
-恢复：
+恢复（先清空再导入）：
 
 ```bash
+docker exec worldcup-db-1 psql -U hiqi -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
 cat backup_20260612.sql | docker exec -i worldcup-db-1 psql -U hiqi hiqi
 ```
 
