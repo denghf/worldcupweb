@@ -6,7 +6,6 @@ import multiavatar from "@multiavatar/multiavatar";
 interface Ranking {
   rank: number;
   nickname: string;
-  avatar: string | null;
   totalBets: number;
   totalWonBets: number;
   totalBetAmount: number;
@@ -46,7 +45,6 @@ export default function RankingPage() {
     return b.totalBetAmount - a.totalBetAmount;
   });
   const ranked = sorted.map((item, index) => ({ ...item, rank: index + 1 }));
-  const champion = ranked[0];
 
   const bigWinner = [...rankings].sort((a, b) => b.netProfit - a.netProfit)[0];
   const bigSpender = [...rankings].sort((a, b) => b.totalBetAmount - a.totalBetAmount)[0];
@@ -191,12 +189,13 @@ function Avatar({ player, size = "md" }: { player: Ranking; size?: "sm" | "md" |
     size === "lg" ? "h-12 w-12" :
     size === "sm" ? "h-6 w-6" :
     "h-9 w-9";
-  const svgCode = multiavatar(player.nickname);
+  const avatar = multiavatar(player.nickname);
 
   return (
     <div
-      className={`shrink-0 rounded-full overflow-hidden ${dimension}`}
-      dangerouslySetInnerHTML={{ __html: svgCode }}
+      className={`shrink-0 overflow-hidden rounded-full bg-bg-surface ${dimension}`}
+      aria-label={player.nickname}
+      dangerouslySetInnerHTML={{ __html: avatar }}
     />
   );
 }

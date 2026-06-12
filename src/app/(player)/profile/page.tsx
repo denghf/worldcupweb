@@ -2,14 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import multiavatar from "@multiavatar/multiavatar";
 import { BetCard, type BetCardData } from "@/components/BetCard";
 
 interface Profile {
   id: number;
   nickname: string;
-  avatar: string | null;
   mustChangePwd: boolean;
-  balance: number;
   totalBets: number;
   totalWonBets: number;
   totalBetAmount: number;
@@ -80,18 +79,21 @@ export default function ProfilePage() {
   if (!profile) return null;
 
   const filtered = tab === "all" ? bets : bets.filter((bet) => bet.status === tab);
-  const avatar = profile.avatar || `https://api.dicebear.com/7.x/thumbs/svg?seed=${profile.id}`;
+  const avatar = multiavatar(profile.nickname);
 
   return (
     <div className="px-3 pb-4 pt-3">
       <section className="mb-3 rounded-3xl bg-white p-4 shadow-sm">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <img src={avatar} alt={profile.nickname} className="h-16 w-16 rounded-full bg-bg-surface" />
+            <div
+              className="h-16 w-16 shrink-0 overflow-hidden rounded-full bg-bg-surface"
+              aria-label={profile.nickname}
+              dangerouslySetInnerHTML={{ __html: avatar }}
+            />
             <div className="min-w-0">
               <h1 className="truncate text-xl font-black text-text-primary">{profile.nickname}</h1>
-              <div className="mt-1 text-xs font-semibold text-text-muted">余额</div>
-              <div className="num text-2xl font-black text-accent">{profile.balance.toFixed(1)}</div>
+              <div className="mt-1 text-xs font-semibold text-text-muted">我的竞猜中心</div>
             </div>
           </div>
           <button onClick={logout} className="rounded-xl bg-bg-surface px-3 py-2 text-xs font-bold text-text-secondary">
