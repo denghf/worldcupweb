@@ -41,6 +41,9 @@ const STATUS_LABELS: Record<string, string> = {
   FINISHED: "已结束",
 };
 
+const DEFAULT_BET_AMOUNT = "5";
+const BET_AMOUNT_STEP = 5;
+
 function getMatchDisplayStatus(match: Match) {
   const now = Date.now();
   const kickoff = new Date(match.kickoffTime).getTime();
@@ -185,6 +188,9 @@ export default function MatchDetailPage() {
   const [match, setMatch] = useState<Match | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedOdds, setSelectedOdds] = useState<Set<string>>(() => new Set());
+  const [loggedIn, setLoggedIn] = useState(false);
+  const [betAmounts, setBetAmounts] = useState<Record<string, string>>({});
+  const [betSubmitting, setBetSubmitting] = useState(false);
 
   useEffect(() => {
     fetch("/api/matches")
@@ -198,6 +204,15 @@ export default function MatchDetailPage() {
       })
       .catch(() => setLoading(false));
   }, [matchId]);
+
+  useEffect(() => {
+    const token = localStorage.getItem("player_token");
+    if (!token) return;
+    fetch("/api/auth/me", { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((res) => setLoggedIn(Boolean(res.success && res.data.loggedIn)))
+      .catch(() => setLoggedIn(false));
+  }, []);
 
   if (loading) {
     return (
@@ -233,14 +248,83 @@ export default function MatchDetailPage() {
   const correctScore = match.odds?.correctScore || [];
   const hasScores = match.homeScore !== null && match.awayScore !== null;
 
+  const getSelectedOddValue = (key: string) => {
+    const [betType, ...optionParts] = key.split(":");
+    const optionKey = optionParts.join(":");
+    if (betType === "X1X") return x1x[optionKey];
+    if (betType === "HANDICAP_X1X") return handicapX1x[optionKey];
+    if (betType === "CORRECT_SCORE") return correctScore.find((o) => o.label === optionKey)?.value;
+    if (betType === "TOTAL_GOALS") return totalGoals.find((o) => o.label === optionKey)?.value;
+    if (betType === "HALF_FULL") return halfFull.find((o) => o.label === optionKey)?.value;
+    return undefined;
+  };
+
+  const selectedItems = [...selectedOdds].map((key) => {
+    const [betType, ...optionParts] = key.split(":");
+    const optionKey = optionParts.join(":");
+    const odds = getSelectedOddValue(key) ?? 0;
+    const amount = Number(betAmounts[key] || "");
+    return { key, betType, optionKey, odds, amount };
+  }).filter((item) => item.odds > 0);
+  const selectedTotalAmount = selectedItems.reduce((sum, item) => sum + (Number.isFinite(item.amount) ? item.amount : 0), 0);
+  const selectedTotalPayout = selectedItems.reduce((sum, item) => sum + (Number.isFinite(item.amount) ? item.amount * item.odds : 0), 0);
+
+  const submitBet = async () => {
+    const token = localStorage.getItem("player_token");
+    if (!loggedIn || !token) return router.push("/profile/login");
+    if (selectedItems.length === 0) return;
+    if (selectedItems.some((item) => !Number.isFinite(item.amount) || item.amount <= 0)) return alert("请为每个选项填写有效下注倍数");
+    if (!confirm(`确认投注 ${selectedItems.length} 注，共 ${selectedTotalAmount.toFixed(1)} 记分？预计赔付 ${selectedTotalPayout.toFixed(1)}`)) return;
+    setBetSubmitting(true);
+    try {
+      const res = await fetch("/api/bets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          matchId: match.id,
+          selections: selectedItems.map((item) => ({ betType: item.betType, optionKey: item.optionKey, amount: item.amount })),
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert("投注成功！");
+        router.push("/profile");
+      } else {
+        alert(data.error || "投注失败");
+      }
+    } catch {
+      alert("网络错误");
+    } finally {
+      setBetSubmitting(false);
+    }
+  };
+
+  const updateBetAmount = (key: string, amount: string) => {
+    setBetAmounts((amounts) => ({ ...amounts, [key]: amount }));
+  };
+
+  const stepBetAmount = (key: string, direction: -1 | 1) => {
+    setBetAmounts((amounts) => {
+      const current = Number(amounts[key] || DEFAULT_BET_AMOUNT);
+      const next = Math.max(BET_AMOUNT_STEP, (Number.isFinite(current) ? current : BET_AMOUNT_STEP) + direction * BET_AMOUNT_STEP);
+      return { ...amounts, [key]: String(next) };
+    });
+  };
+
   const toggleOdd = (key: string) => {
     if (!canSelect) return;
     setSelectedOdds((current) => {
       const next = new Set(current);
       if (next.has(key)) {
         next.delete(key);
+        setBetAmounts((amounts) => {
+          const copied = { ...amounts };
+          delete copied[key];
+          return copied;
+        });
       } else {
         next.add(key);
+        setBetAmounts((amounts) => ({ ...amounts, [key]: amounts[key] || DEFAULT_BET_AMOUNT }));
       }
       return next;
     });
@@ -271,7 +355,7 @@ export default function MatchDetailPage() {
                 </span>
                 {selectedOdds.size === 0 && (
                   <span className="rounded-full bg-bg-surface px-2 py-0.5 text-[10px] font-semibold text-text-secondary">
-                    点击赔率多选后截图
+                    {loggedIn ? "点击赔率进行投注" : "登录后可投注，当前可多选截图"}
                   </span>
                 )}
               </>
@@ -284,7 +368,7 @@ export default function MatchDetailPage() {
         {canSelect && selectedOdds.size > 0 && (
           <button
             type="button"
-            onClick={() => setSelectedOdds(new Set())}
+            onClick={() => { setSelectedOdds(new Set()); setBetAmounts({}); }}
             className="ml-auto h-8 rounded-full border border-border bg-white px-2.5 text-[11px] font-semibold text-text-secondary transition-colors hover:border-accent hover:text-accent"
           >
             清空
@@ -322,6 +406,63 @@ export default function MatchDetailPage() {
           <TeamBlock align="right" name={match.awayTeam} logo={match.awayTeamLogo} compact />
         </div>
       </section>
+
+      {canSelect && loggedIn && selectedItems.length > 0 && (
+        <section className="mb-3 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-border">
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-sm font-black text-text-primary">已选投注</h2>
+            <div className="num text-xs font-bold text-accent">共 {selectedTotalAmount.toFixed(1)} · 预计 {selectedTotalPayout.toFixed(1)}</div>
+          </div>
+          <div className="space-y-2">
+            {selectedItems.map((item) => {
+              const payout = Number.isFinite(item.amount) ? item.amount * item.odds : 0;
+              return (
+                <div key={item.key} className="grid grid-cols-[1fr_54px_auto_60px] items-center gap-2 rounded-xl bg-bg-surface px-2.5 py-2">
+                  <div className="min-w-0">
+                    <div className="truncate text-[10px] font-bold text-text-muted">{formatMarketName(item.betType)}</div>
+                    <div className="truncate text-xs font-black text-text-primary">{formatBetOption(item.betType, item.optionKey)}</div>
+                  </div>
+                  <div className="num text-right text-xs font-black text-accent">@{item.odds.toFixed(2)}</div>
+                  <div className="flex items-center rounded-lg border border-border bg-white shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]">
+                    <button
+                      type="button"
+                      onClick={() => stepBetAmount(item.key, -1)}
+                      className="flex h-8 w-7 items-center justify-center rounded-l-lg text-sm font-black text-text-secondary transition-colors hover:bg-accent hover:text-white active:bg-accent-dim"
+                      aria-label="减少倍数"
+                    >
+                      -
+                    </button>
+                    <input
+                      value={betAmounts[item.key] || ""}
+                      onChange={(e) => updateBetAmount(item.key, e.target.value)}
+                      inputMode="decimal"
+                      className="num h-8 w-[30px] border-x border-border bg-transparent px-0 text-center text-xs font-black text-text-primary outline-none"
+                      placeholder="5"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => stepBetAmount(item.key, 1)}
+                      className="flex h-8 w-7 items-center justify-center rounded-r-lg text-sm font-black text-text-secondary transition-colors hover:bg-accent hover:text-white active:bg-accent-dim"
+                      aria-label="增加倍数"
+                    >
+                      +
+                    </button>
+                  </div>
+                  <div className="num text-right text-xs font-black text-accent">{payout.toFixed(1)}</div>
+                </div>
+              );
+            })}
+          </div>
+          <button
+            type="button"
+            onClick={submitBet}
+            disabled={betSubmitting}
+            className="btn-primary mt-3 w-full rounded-xl py-3 text-sm disabled:opacity-40"
+          >
+            {betSubmitting ? "提交中..." : `确认投注 ${selectedItems.length} 注`}
+          </button>
+        </section>
+      )}
 
       {/* Odds grids */}
       <div className="space-y-1.5">
@@ -473,4 +614,21 @@ function formatHandicapLabel(key: string) {
   const labels: Record<string, string> = { home: "让胜", draw: "让平", away: "让负" };
   const [handicap, option] = key.includes(":") ? key.split(":") : ["", key];
   return `${handicap}${labels[option] || option}`;
+}
+
+function formatMarketName(betType: string) {
+  const names: Record<string, string> = {
+    X1X: "胜平负",
+    HANDICAP_X1X: "让球胜平负",
+    CORRECT_SCORE: "猜比分",
+    TOTAL_GOALS: "总进球",
+    HALF_FULL: "半全场",
+  };
+  return names[betType] || betType;
+}
+
+function formatBetOption(betType: string, optionKey: string) {
+  if (betType === "X1X") return ({ home: "胜", draw: "平", away: "负" } as Record<string, string>)[optionKey] || optionKey;
+  if (betType === "HANDICAP_X1X") return formatHandicapLabel(optionKey);
+  return optionKey;
 }

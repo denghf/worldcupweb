@@ -6,6 +6,7 @@ interface Player {
   id: number;
   username: string;
   nickname: string;
+  mustChangePwd: boolean;
   status: string;
   totalBets: number;
   totalBetAmount: number;
@@ -22,7 +23,6 @@ export default function PlayersPage() {
   const [nickname, setNickname] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editNickname, setEditNickname] = useState("");
-  const [deleteTarget, setDeleteTarget] = useState<Player | null>(null);
 
   useEffect(() => {
     loadPlayers();
@@ -99,26 +99,6 @@ export default function PlayersPage() {
     }
   };
 
-  const handleDelete = async () => {
-    if (!deleteTarget) return;
-    try {
-      const res = await fetch("/api/admin/players", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: deleteTarget.id }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setDeleteTarget(null);
-        loadPlayers();
-      } else {
-        alert(data.error || "删除失败");
-      }
-    } catch {
-      alert("网络错误");
-    }
-  };
-
   const toggleStatus = async (player: Player) => {
     try {
       const res = await fetch("/api/admin/players", {
@@ -133,6 +113,26 @@ export default function PlayersPage() {
       if (data.success) loadPlayers();
     } catch {
       alert("操作失败");
+    }
+  };
+
+  const resetPassword = async (player: Player) => {
+    if (!confirm("确定将密码重置为 123456？玩家下次登录需重新设置密码")) return;
+    try {
+      const res = await fetch("/api/admin/players", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: player.id, resetPassword: true }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(data.data.message);
+        loadPlayers();
+      } else {
+        alert(data.error || "重置失败");
+      }
+    } catch {
+      alert("网络错误");
     }
   };
 
@@ -239,6 +239,7 @@ export default function PlayersPage() {
                       </span>
                     )}
                     <div className="text-text-muted text-sm">@{player.username}</div>
+                    <div className="text-text-muted text-xs">登录：用户名 + 初始密码 123456{player.mustChangePwd ? " · 待改密" : ""}</div>
                   </td>
                   <td className="py-3 px-4 text-center">
                     <span className="text-sm font-medium text-text-primary">
@@ -261,6 +262,12 @@ export default function PlayersPage() {
                         改名
                       </button>
                       <button
+                        onClick={() => resetPassword(player)}
+                        className="text-sm px-2.5 py-1 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
+                      >
+                        重置密码
+                      </button>
+                      <button
                         onClick={() => toggleStatus(player)}
                         className={`text-sm px-2.5 py-1 rounded transition-colors ${
                           player.status === "ACTIVE"
@@ -270,46 +277,12 @@ export default function PlayersPage() {
                       >
                         {player.status === "ACTIVE" ? "禁用" : "启用"}
                       </button>
-                      <button
-                        onClick={() => setDeleteTarget(player)}
-                        className="text-sm px-2.5 py-1 rounded bg-red/10 text-red hover:bg-red/20 transition-colors"
-                      >
-                        删除
-                      </button>
                     </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
-      )}
-
-      {/* Delete confirm modal */}
-      {deleteTarget && (
-        <div className="fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4">
-          <div className="bg-bg-surface w-full max-w-sm rounded-2xl p-6 animate-fade-in-up">
-            <h3 className="font-display text-base font-semibold mb-2">确认删除</h3>
-            <p className="text-text-secondary text-sm mb-1">
-              确定要删除玩家 <span className="text-text-primary font-medium">{deleteTarget.nickname}</span>
-              <span className="text-text-muted"> (@{deleteTarget.username})</span> 吗？
-            </p>
-            <p className="text-red text-sm mb-5">此操作不可撤销，该玩家的所有下注和交易记录将被永久删除。</p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setDeleteTarget(null)}
-                className="flex-1 py-2.5 rounded-xl text-sm border border-border hover:bg-bg-hover transition-colors"
-              >
-                取消
-              </button>
-              <button
-                onClick={handleDelete}
-                className="flex-1 py-2.5 rounded-xl text-sm bg-red text-white hover:opacity-90 transition-opacity font-semibold"
-              >
-                确认删除
-              </button>
-            </div>
-          </div>
         </div>
       )}
     </div>

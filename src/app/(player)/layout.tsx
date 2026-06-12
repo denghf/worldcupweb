@@ -7,6 +7,7 @@ const tabs = [
   { href: "/", label: "赛事", icon: MatchIcon },
   { href: "/bets", label: "投注", icon: BetsIcon },
   { href: "/ranking", label: "排名", icon: RankIcon },
+  { href: "/profile", label: "我的", icon: UserIcon },
 ];
 
 export default function PlayerLayout({ children }: { children: React.ReactNode }) {
@@ -79,6 +80,15 @@ function RankIcon({ active }: { active: boolean }) {
       <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" />
       <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" />
       <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
+    </svg>
+  );
+}
+
+function UserIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? "var(--color-accent)" : "currentColor"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 21a8 8 0 0 0-16 0" />
+      <circle cx="12" cy="7" r="4" />
     </svg>
   );
 }

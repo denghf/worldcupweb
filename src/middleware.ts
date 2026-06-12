@@ -7,20 +7,14 @@ const SECRET = new TextEncoder().encode(JWT_SECRET);
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+  const token = req.cookies.get("token")?.value;
 
-  // Only protect /admin routes (except /admin/login)
   if (pathname.startsWith("/admin") && pathname !== "/admin/login") {
-    const token = req.cookies.get("token")?.value;
-
-    if (!token) {
-      return NextResponse.redirect(new URL("/admin/login", req.url));
-    }
+    if (!token) return NextResponse.redirect(new URL("/admin/login", req.url));
 
     try {
       const { payload } = await jwtVerify(token, SECRET, { clockTolerance: 60 });
-      if (payload.role !== "ADMIN") {
-        return NextResponse.redirect(new URL("/admin/login", req.url));
-      }
+      if (payload.role !== "ADMIN") return NextResponse.redirect(new URL("/admin/login", req.url));
     } catch {
       return NextResponse.redirect(new URL("/admin/login", req.url));
     }

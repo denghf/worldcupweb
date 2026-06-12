@@ -3,10 +3,10 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "嗨起来 · 赛事竞猜",
-  description: "和朋友一起猜球，欢乐豆赢不停",
+  description: "和朋友一起猜球，记分赢不停",
   openGraph: {
     title: "嗨起来 · 赛事竞猜",
-    description: "和朋友一起猜球，欢乐豆赢不停",
+    description: "和朋友一起猜球，记分赢不停",
     type: "website",
   },
 };

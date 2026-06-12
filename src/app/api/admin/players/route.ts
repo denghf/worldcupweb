@@ -1,7 +1,16 @@
 import { NextRequest } from "next/server";
+import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 import { apiSuccess, apiError } from "@/lib/response";
 import { withAdmin } from "@/lib/with-auth";
+
+function defaultAvatar(seed: string | number) {
+  return `https://api.dicebear.com/7.x/thumbs/svg?seed=${seed}`;
+}
+
+async function defaultPasswordHash() {
+  return bcrypt.hash("123456", 10);
+}
 
 export const GET = withAdmin(async () => {
   const users = await prisma.user.findMany({
@@ -9,6 +18,7 @@ export const GET = withAdmin(async () => {
       id: true,
       username: true,
       nickname: true,
+      mustChangePwd: true,
       role: true,
       status: true,
       createdAt: true,
@@ -46,9 +56,10 @@ export const POST = withAdmin(async (req: NextRequest) => {
       return apiError("用户名已存在");
     }
 
+    const password = await defaultPasswordHash();
     const user = await prisma.$transaction(async (tx) => {
       const u = await tx.user.create({
-        data: { username, nickname, role: "PLAYER" },
+        data: { username, nickname, role: "PLAYER", avatar: defaultAvatar(username), password, mustChangePwd: true },
       });
       await tx.wallet.create({ data: { userId: u.id, balance: 0 } });
       await tx.userStats.create({ data: { userId: u.id } });
@@ -64,7 +75,7 @@ export const POST = withAdmin(async (req: NextRequest) => {
 
 export const PATCH = withAdmin(async (req: NextRequest) => {
   try {
-    const { userId, status, nickname } = await req.json();
+    const { userId, status, nickname, resetPassword } = await req.json();
 
     if (!userId) return apiError("玩家ID必填");
 
@@ -83,6 +94,15 @@ export const PATCH = withAdmin(async (req: NextRequest) => {
         data: { nickname: nickname.trim() },
       });
       return apiSuccess({ message: "昵称已更新" });
+    }
+
+    if (resetPassword) {
+      const password = await defaultPasswordHash();
+      await prisma.user.update({
+        where: { id: userId },
+        data: { password, mustChangePwd: true },
+      });
+      return apiSuccess({ message: "密码已重置为 123456" });
     }
 
     return apiError("无有效操作");

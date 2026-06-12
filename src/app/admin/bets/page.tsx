@@ -628,7 +628,7 @@ export default function BetManagementPage() {
                   <label className="text-sm text-text-secondary mb-2 block">第三步：下注金额</label>
                   <div className="flex gap-3 items-end">
                     <div className="flex-1">
-                      <input type="number" value={parlayAmount} onChange={(e) => setParlayAmount(e.target.value)} placeholder="输入金额（欢乐豆）"
+                      <input type="number" value={parlayAmount} onChange={(e) => setParlayAmount(e.target.value)} placeholder="输入金额（记分）"
                         className="input-field w-full rounded-lg px-3 py-2 text-sm" />
                     </div>
                     <div className="text-right text-xs text-text-muted py-2 min-w-[100px]">
