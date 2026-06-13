@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { apiSuccess, apiError } from "@/lib/response";
 import { withAdmin } from "@/lib/with-auth";
 import { prisma } from "@/lib/db";
+import { settleMatchResult } from "@/lib/match-settlement";
 
 const BASE_URL = "https://zx.500.com/jczq/kaijiang.php";
 const HEADERS = {
@@ -11,6 +12,8 @@ const HEADERS = {
 
 interface ParsedResult {
   matchNo: string;
+  competition: string;
+  kickoffDate: string;
   homeTeam: string;
   awayTeam: string;
   homeScore: number;
@@ -29,22 +32,40 @@ function getTodayShanghai(): string {
   return `${shanghai.getUTCFullYear()}-${String(shanghai.getUTCMonth() + 1).padStart(2, "0")}-${String(shanghai.getUTCDate()).padStart(2, "0")}`;
 }
 
-function parseResults(html: string): ParsedResult[] {
+function getShanghaiDate(date: Date) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
+function getResultDate(importDate: string, monthDay: string) {
+  const [importYear, importMonth] = importDate.split("-").map(Number);
+  const [month, day] = monthDay.split("-").map(Number);
+  const year = importMonth === 12 && month === 1 ? importYear + 1 : importMonth === 1 && month === 12 ? importYear - 1 : importYear;
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+function parseResults(html: string, importDate: string): ParsedResult[] {
   const results: ParsedResult[] = [];
   const rows = [...html.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)];
 
   for (const row of rows) {
     const text = stripHtml(row[1]);
-    const m = text.match(/^(周[一二三四五六日]\d{3})\s+\S+\s+\d{2}-\d{2}\s+\d{2}:\d{2}\s+(\S+)\s+-?\d+\s+(\S+)\s+\((\d+):(\d+)\)\s+(\d+):(\d+)/);
+    const m = text.match(/^(周[一二三四五六日]\d{3})\s+(\S+)\s+(\d{2}-\d{2})\s+\d{2}:\d{2}\s+(\S+)\s+-?\d+\s+(\S+)\s+\((\d+):(\d+)\)\s+(\d+):(\d+)/);
     if (m) {
       results.push({
         matchNo: m[1],
-        homeTeam: m[2],
-        awayTeam: m[3],
-        halfHomeScore: Number(m[4]),
-        halfAwayScore: Number(m[5]),
-        homeScore: Number(m[6]),
-        awayScore: Number(m[7]),
+        competition: m[2],
+        kickoffDate: getResultDate(importDate, m[3]),
+        homeTeam: m[4],
+        awayTeam: m[5],
+        halfHomeScore: Number(m[6]),
+        halfAwayScore: Number(m[7]),
+        homeScore: Number(m[8]),
+        awayScore: Number(m[9]),
       });
     }
   }
@@ -62,7 +83,7 @@ export const POST = withAdmin(async (req: NextRequest) => {
 
     const buf = Buffer.from(await res.arrayBuffer());
     const html = new TextDecoder("gb18030").decode(buf);
-    const results = parseResults(html);
+    const results = parseResults(html, date).filter((result) => result.competition === "世界杯");
 
     if (results.length === 0) {
       return apiSuccess({ fetched: 0, settled: 0, message: "当天没有已开奖的比赛" });
@@ -78,7 +99,7 @@ export const POST = withAdmin(async (req: NextRequest) => {
 
     // Also fuzzy match by team name + date for wc2026-xxx matches
     const unmatched = results.filter((r) => !apiIdMap.has(`500-${r.matchNo}`));
-    let fuzzyMatches: Map<string, { id: number; status: string }> = new Map();
+    const fuzzyMatches: Map<string, { id: number; status: string }> = new Map();
 
     if (unmatched.length > 0) {
       const allMatches = await prisma.match.findMany({
@@ -88,7 +109,7 @@ export const POST = withAdmin(async (req: NextRequest) => {
         const found = allMatches.find((m) =>
           m.homeTeam === r.homeTeam &&
           m.awayTeam === r.awayTeam &&
-          m.status === "UPCOMING"
+          getShanghaiDate(m.kickoffTime) === r.kickoffDate
         );
         if (found) fuzzyMatches.set(r.matchNo, found);
       }
@@ -103,19 +124,21 @@ export const POST = withAdmin(async (req: NextRequest) => {
       const match = byApiId ?? byFuzzy;
 
       if (!match) { skipped++; continue; }
-      if (match.status === "FINISHED") { skipped++; continue; }
 
-      await prisma.match.update({
-        where: { id: match.id },
-        data: {
-          homeScore: r.homeScore,
-          awayScore: r.awayScore,
-          halfHomeScore: r.halfHomeScore,
-          halfAwayScore: r.halfAwayScore,
-          finalHomeScore: r.homeScore,
-          finalAwayScore: r.awayScore,
-          status: "FINISHED",
-        },
+      if (match.status === "FINISHED") {
+        const pendingItems = await prisma.betItem.count({ where: { matchId: match.id, result: "PENDING" } });
+        if (pendingItems === 0) { skipped++; continue; }
+      }
+
+      await settleMatchResult({
+        matchId: match.id,
+        homeScore: r.homeScore,
+        awayScore: r.awayScore,
+        halfHomeScore: r.halfHomeScore,
+        halfAwayScore: r.halfAwayScore,
+        finalHomeScore: r.homeScore,
+        finalAwayScore: r.awayScore,
+        allowResettle: false,
       });
       settled++;
     }

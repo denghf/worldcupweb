@@ -8,6 +8,7 @@ interface Player {
   nickname: string;
   mustChangePwd: boolean;
   status: string;
+  balance: number;
   totalBets: number;
   totalBetAmount: number;
   totalWonBets: number;
@@ -37,6 +38,7 @@ export default function PlayersPage() {
         setPlayers(
           (data.data || []).map((p: Player) => ({
             ...p,
+            balance: Number(p.balance ?? 0),
             netProfit: Number(p.netProfit ?? 0),
           }))
         );
@@ -116,6 +118,28 @@ export default function PlayersPage() {
     }
   };
 
+  const updateBalance = async (player: Player) => {
+    const input = prompt("请输入新的下注余额：", String(player.balance));
+    if (input === null) return;
+    const balance = Number(input);
+    if (!Number.isFinite(balance) || balance < 0) return alert("请输入不小于 0 的数字");
+    try {
+      const res = await fetch("/api/admin/players", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: player.id, balance }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        loadPlayers();
+      } else {
+        alert(data.error || "修改失败");
+      }
+    } catch {
+      alert("网络错误");
+    }
+  };
+
   const resetPassword = async (player: Player) => {
     if (!confirm("确定将密码重置为 123456？玩家下次登录需重新设置密码")) return;
     try {
@@ -137,7 +161,7 @@ export default function PlayersPage() {
   };
 
   return (
-    <div className="max-w-5xl">
+    <div className="w-full">
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="font-display text-lg font-semibold">玩家管理</h2>
@@ -186,12 +210,13 @@ export default function PlayersPage() {
       {loading ? (
         <div className="text-text-muted text-sm py-8 text-center">加载中...</div>
       ) : (
-        <div className="glass rounded-xl overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="glass rounded-xl overflow-x-auto">
+          <table className="w-full min-w-[980px] text-sm">
             <thead>
               <tr className="border-b border-border text-text-muted text-sm">
                 <th className="text-left py-3 px-4 font-medium">玩家</th>
                 <th className="text-center py-3 px-4 font-medium">状态</th>
+                <th className="text-right py-3 px-4 font-medium">余额</th>
                 <th className="text-right py-3 px-4 font-medium">下注数</th>
                 <th className="text-right py-3 px-4 font-medium">下注总额</th>
                 <th className="text-right py-3 px-4 font-medium">中奖数</th>
@@ -246,6 +271,7 @@ export default function PlayersPage() {
                       {player.status === "ACTIVE" ? "正常" : "禁用"}
                     </span>
                   </td>
+                  <td className="num py-3 px-4 text-right font-bold text-accent">{player.balance.toFixed(1)}</td>
                   <td className="py-3 px-4 text-right text-text-secondary">{player.totalBets}</td>
                   <td className="py-3 px-4 text-right text-text-secondary">{player.totalBetAmount}</td>
                   <td className="py-3 px-4 text-right text-text-secondary">{player.totalWonBets}</td>
@@ -260,6 +286,12 @@ export default function PlayersPage() {
                         className="text-sm px-2.5 py-1 rounded bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
                       >
                         改名
+                      </button>
+                      <button
+                        onClick={() => updateBalance(player)}
+                        className="text-sm px-2.5 py-1 rounded bg-gold/10 text-gold-dim hover:bg-gold/20 transition-colors"
+                      >
+                        改余额
                       </button>
                       <button
                         onClick={() => resetPassword(player)}

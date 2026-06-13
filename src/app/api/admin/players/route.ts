@@ -4,6 +4,8 @@ import { prisma } from "@/lib/db";
 import { apiSuccess, apiError } from "@/lib/response";
 import { withAdmin } from "@/lib/with-auth";
 
+const INITIAL_PLAYER_BALANCE = 2000;
+
 function defaultAvatar(seed: string | number) {
   return `https://api.dicebear.com/7.x/thumbs/svg?seed=${seed}`;
 }
@@ -22,6 +24,7 @@ export const GET = withAdmin(async () => {
       role: true,
       status: true,
       createdAt: true,
+      wallet: { select: { balance: true } },
       stats: { select: { totalBets: true, totalBetAmount: true, totalWonBets: true, totalWinAmount: true, netProfit: true } },
     },
     orderBy: { createdAt: "desc" },
@@ -30,6 +33,7 @@ export const GET = withAdmin(async () => {
   return apiSuccess(
     users.map((u) => ({
       ...u,
+      balance: Number(u.wallet?.balance ?? 0),
       totalBets: u.stats?.totalBets ?? 0,
       totalBetAmount: Number(u.stats?.totalBetAmount ?? 0),
       totalWonBets: u.stats?.totalWonBets ?? 0,
@@ -61,7 +65,7 @@ export const POST = withAdmin(async (req: NextRequest) => {
       const u = await tx.user.create({
         data: { username, nickname, role: "PLAYER", avatar: defaultAvatar(username), password, mustChangePwd: true },
       });
-      await tx.wallet.create({ data: { userId: u.id, balance: 0 } });
+      await tx.wallet.create({ data: { userId: u.id, balance: INITIAL_PLAYER_BALANCE } });
       await tx.userStats.create({ data: { userId: u.id } });
       return u;
     });
@@ -75,7 +79,7 @@ export const POST = withAdmin(async (req: NextRequest) => {
 
 export const PATCH = withAdmin(async (req: NextRequest) => {
   try {
-    const { userId, status, nickname, resetPassword } = await req.json();
+    const { userId, status, nickname, balance, resetPassword } = await req.json();
 
     if (!userId) return apiError("玩家ID必填");
 
@@ -94,6 +98,17 @@ export const PATCH = withAdmin(async (req: NextRequest) => {
         data: { nickname: nickname.trim() },
       });
       return apiSuccess({ message: "昵称已更新" });
+    }
+
+    if (balance !== undefined) {
+      const parsedBalance = Number(balance);
+      if (!Number.isFinite(parsedBalance) || parsedBalance < 0) return apiError("余额必须是不小于 0 的数字");
+      await prisma.wallet.upsert({
+        where: { userId },
+        update: { balance: parsedBalance },
+        create: { userId, balance: parsedBalance },
+      });
+      return apiSuccess({ message: "余额已更新" });
     }
 
     if (resetPassword) {

@@ -122,6 +122,7 @@ function buildMatches(baseBlocks: ReturnType<typeof extractMatchBlocks>): Map<st
     const homeTeam = block.attrs["data-homesxname"];
     const awayTeam = block.attrs["data-awaysxname"];
     const kickoffTime = parseKickoff(block.attrs["data-matchdate"], block.attrs["data-matchtime"]);
+    if (block.attrs["data-simpleleague"] !== "世界杯") continue;
     if (!homeTeam || !awayTeam || !kickoffTime) continue;
 
     const handicap = parseHandicap(block.attrs["data-rangqiu"]);

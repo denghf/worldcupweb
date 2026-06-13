@@ -48,6 +48,7 @@ export type ApiFixture = {
     logo: string;
   };
   score: {
+    halftime: { home: number | null; away: number | null };
     fulltime: { home: number | null; away: number | null };
   };
 };
