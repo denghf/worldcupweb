@@ -1,6 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import {
+  MARKET_NAMES,
+  X1X_LABELS,
+  HANDICAP_LABELS,
+  formatOptionLabel,
+  type BetMarket,
+} from "@/lib/bet-display";
 
 interface Match {
   id: number;
@@ -40,23 +47,12 @@ type BetItem = {
   matchId: number;
   homeTeam: string;
   awayTeam: string;
-  betMarket: "X1X" | "HANDICAP_X1X" | "HALF_FULL" | "TOTAL_GOALS" | "CORRECT_SCORE";
+  betMarket: BetMarket;
   selectedOption: string;
   odds: number;
 };
 
 type SingleSelection = BetItem & { amount: string };
-
-const MARKET_NAMES: Record<BetItem["betMarket"], string> = {
-  X1X: "胜平负",
-  HANDICAP_X1X: "让球胜平负",
-  HALF_FULL: "半全场",
-  TOTAL_GOALS: "总进球",
-  CORRECT_SCORE: "猜比分",
-};
-
-const X1X_LABELS: Record<string, string> = { home: "胜", draw: "平", away: "负" };
-const HANDICAP_LABELS: Record<string, string> = { home: "让胜", draw: "让平", away: "让负" };
 
 export default function BetManagementPage() {
   const [showForm, setShowForm] = useState(true);
@@ -726,13 +722,4 @@ function OddsPickButton({ label, odds, selected, onClick }: { label: string; odd
       <span>{odds.toFixed(2)}</span>
     </button>
   );
-}
-
-function formatOptionLabel(market: BetItem["betMarket"], option: string) {
-  if (market === "X1X") return X1X_LABELS[option] || option;
-  if (market === "HANDICAP_X1X") {
-    const [handicap, key] = option.includes(":") ? option.split(":") : ["", option];
-    return `${handicap}${HANDICAP_LABELS[key] || key}`;
-  }
-  return option;
 }

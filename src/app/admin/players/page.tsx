@@ -276,7 +276,7 @@ export default function PlayersPage() {
                   <td className="py-3 px-4 text-right text-text-secondary">{player.totalBetAmount}</td>
                   <td className="py-3 px-4 text-right text-text-secondary">{player.totalWonBets}</td>
                   <td className="py-3 px-4 text-right text-text-secondary">{player.totalWinAmount}</td>
-                  <td className={`py-3 px-4 text-right font-medium ${player.netProfit >= 0 ? "text-accent" : "text-red"}`}>
+                  <td className={`py-3 px-4 text-right font-medium ${player.netProfit > 0 ? "text-accent" : player.netProfit < 0 ? "text-emerald-500" : ""}`}>
                     {player.netProfit >= 0 ? "+" : ""}{player.netProfit}
                   </td>
                   <td className="py-3 px-4 text-right">

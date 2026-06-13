@@ -9,6 +9,7 @@ const navItems = [
   { href: "/admin/bet-details", label: "下注详情", icon: BetDetailIcon },
   { href: "/admin/players", label: "玩家管理", icon: UsersIcon },
   { href: "/admin/tournaments", label: "赛事管理", icon: TournamentIcon },
+  { href: "/admin/results", label: "赛果查看", icon: ResultsIcon },
   { href: "/admin/redemptions", label: "兑奖管理", icon: RedemptionIcon },
 ];
 
@@ -152,6 +153,16 @@ function StatsIcon({ active }: { active: boolean }) {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={active ? "var(--color-accent)" : "currentColor"} strokeWidth="2">
       <path d="M3 3v18h18" /><path d="M18 17V9" /><path d="M13 17V5" /><path d="M8 17v-3" />
+    </svg>
+  );
+}
+
+function ResultsIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={active ? "var(--color-accent)" : "currentColor"} strokeWidth="2">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" />
+      <path d="M14 2v6h6" />
+      <path d="m9 15 2 2 4-4" />
     </svg>
   );
 }
