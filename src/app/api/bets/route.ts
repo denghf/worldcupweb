@@ -135,20 +135,6 @@ export async function POST(req: NextRequest) {
       }
 
       await tx.wallet.update({ where: { userId: player.userId }, data: { balance: balanceAfter } });
-      await tx.userStats.upsert({
-        where: { userId: player.userId },
-        update: {
-          totalBets: { increment: normalizedSelections.length },
-          totalBetAmount: { increment: totalAmount },
-          netProfit: { decrement: totalAmount },
-        },
-        create: {
-          userId: player.userId!,
-          totalBets: normalizedSelections.length,
-          totalBetAmount: totalAmount,
-          netProfit: -totalAmount,
-        },
-      });
 
       return createdBets;
     });
