@@ -88,7 +88,11 @@ export default function ResultsPage() {
     fetch("/api/admin/results")
       .then((r) => r.json())
       .then((data) => {
-        if (data.success) setMatches(data.data || []);
+        if (data.success) {
+          const rows = data.data || [];
+          setMatches(rows);
+          if (rows.length > 0 && selectedId == null) setSelectedId(rows[0].id);
+        }
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -168,12 +172,14 @@ export default function ResultsPage() {
                 <button
                   key={m.id}
                   onClick={() => setSelectedId(m.id)}
-                  className={`w-full text-left glass rounded-xl p-3 transition-all ${
-                    active ? "ring-1 ring-accent/40 border-accent/30" : "hover:bg-bg-hover"
+                  className={`w-full text-left rounded-xl p-3 transition-all border ${
+                    active
+                      ? "bg-accent/10 border-accent ring-1 ring-accent/30"
+                      : "glass border-transparent hover:bg-bg-hover"
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-medium truncate">
+                    <span className={`text-sm font-medium truncate ${active ? "text-accent" : ""}`}>
                       {m.homeTeam} {m.homeScore ?? "-"}:{m.awayScore ?? "-"} {m.awayTeam}
                     </span>
                   </div>
