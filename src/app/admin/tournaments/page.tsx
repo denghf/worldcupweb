@@ -105,7 +105,11 @@ export default function AdminTournamentsPage() {
       fetch("/api/matches"),
     ]);
     const [tData, mData] = await Promise.all([tRes.json(), mRes.json()]);
-    if (tData.success) setTournaments(tData.data || []);
+    if (tData.success) {
+      const rows = tData.data || [];
+      setTournaments(rows);
+      setExpandedTournament((current) => current ?? rows[0]?.id ?? null);
+    }
     if (mData.success) setMatches(mData.data || []);
     setLoading(false);
   }

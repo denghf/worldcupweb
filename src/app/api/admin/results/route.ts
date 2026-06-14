@@ -26,14 +26,16 @@ export const GET = withAdmin(async (req: NextRequest) => {
 
     const rows = matches.map((m) => {
       const betById = new Map<number, { totalAmount: number; actualPayout: number | null; status: string }>();
+      const openBetIds = new Set<number>();
       let winCount = 0;
       let loseCount = 0;
-      let allSettled = m.betItems.length > 0;
+      let pendingItemCount = 0;
 
       for (const bi of m.betItems) {
         if (bi.result === "WON") winCount += 1;
         else if (bi.result === "LOST") loseCount += 1;
-        if (!settledStatuses.has(bi.bet.status)) allSettled = false;
+        else if (bi.result === "PENDING") pendingItemCount += 1;
+        if (!settledStatuses.has(bi.bet.status)) openBetIds.add(bi.bet.id);
 
         const existing = betById.get(bi.bet.id);
         if (!existing) {
@@ -70,10 +72,12 @@ export const GET = withAdmin(async (req: NextRequest) => {
         betItemCount: m.betItems.length,
         winCount,
         loseCount,
+        pendingItemCount,
+        openBetCount: openBetIds.size,
         totalBetAmount,
         totalPayout,
         hasScore,
-        settled: allSettled,
+        settled: pendingItemCount === 0,
       };
     });
 

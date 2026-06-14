@@ -27,6 +27,8 @@ interface MatchListItem {
   betItemCount: number;
   winCount: number;
   loseCount: number;
+  pendingItemCount: number;
+  openBetCount: number;
   totalBetAmount: number;
   totalPayout: number;
   hasScore: boolean;
@@ -79,7 +81,6 @@ export default function ResultsPage() {
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [detail, setDetail] = useState<MatchDetail | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
 
   const [dateFilter, setDateFilter] = useState("");
   const [teamFilter, setTeamFilter] = useState("");
@@ -91,7 +92,7 @@ export default function ResultsPage() {
         if (data.success) {
           const rows = data.data || [];
           setMatches(rows);
-          if (rows.length > 0 && selectedId == null) setSelectedId(rows[0].id);
+          setSelectedId((current) => current ?? rows[0]?.id ?? null);
         }
         setLoading(false);
       })
@@ -99,19 +100,15 @@ export default function ResultsPage() {
   }, []);
 
   useEffect(() => {
-    if (selectedId == null) {
-      setDetail(null);
-      return;
-    }
-    setDetailLoading(true);
+    if (selectedId == null) return;
     fetch(`/api/admin/results?matchId=${selectedId}`)
       .then((r) => r.json())
-      .then((data) => {
-        if (data.success) setDetail(data.data);
-        setDetailLoading(false);
-      })
-      .catch(() => setDetailLoading(false));
+      .then((data) => setDetail(data.success ? data.data : null))
+      .catch(() => setDetail(null));
   }, [selectedId]);
+
+  const selectedDetail = selectedId != null && detail?.id === selectedId ? detail : null;
+  const detailLoading = selectedId != null && detail?.id !== selectedId;
 
   const filteredMatches = useMemo(() => {
     return matches.filter((m) => {
@@ -167,7 +164,7 @@ export default function ResultsPage() {
           <div className="w-72 shrink-0 space-y-2 max-h-[70vh] overflow-y-auto pr-1">
             {filteredMatches.map((m) => {
               const active = m.id === selectedId;
-              const needsSettle = m.hasScore && !m.settled;
+              const resultStatus = getResultStatus(m);
               return (
                 <button
                   key={m.id}
@@ -190,7 +187,7 @@ export default function ResultsPage() {
                         : "半场 -"}
                     </span>
                     <span>
-                      {needsSettle ? "待结算" : m.settled ? "已结算" : ""}
+                      {resultStatus.shortLabel}
                     </span>
                   </div>
                   <div className="text-xs text-text-muted mt-0.5">
@@ -210,16 +207,35 @@ export default function ResultsPage() {
               </div>
             ) : detailLoading ? (
               <div className="glass rounded-xl p-8 text-center text-text-muted text-sm">加载中...</div>
-            ) : !detail ? (
+            ) : !selectedDetail ? (
               <div className="glass rounded-xl p-8 text-center text-text-muted text-sm">未找到赛事</div>
             ) : (
-              <MatchDetailView detail={detail} summary={matches.find((m) => m.id === selectedId) || null} />
+              <MatchDetailView detail={selectedDetail} summary={matches.find((m) => m.id === selectedId) || null} />
             )}
           </div>
         </div>
       )}
     </div>
   );
+}
+
+function getResultStatus(match: MatchListItem | null) {
+  if (!match?.hasScore) return { shortLabel: "", badgeLabel: "", summaryLabel: "" };
+  if (match.pendingItemCount > 0) {
+    return {
+      shortLabel: "本场待结算",
+      badgeLabel: "赛果已更新，本场投注待结算",
+      summaryLabel: "赛果已更新，本场投注仍待结算",
+    };
+  }
+  if (match.openBetCount > 0) {
+    return {
+      shortLabel: "串关待完赛",
+      badgeLabel: "本场已结算，串关待其它场次",
+      summaryLabel: "本场投注已结算，部分串关注单需等待其它场次完成后汇总赔付",
+    };
+  }
+  return { shortLabel: "已结算", badgeLabel: "", summaryLabel: "" };
 }
 
 function MatchDetailView({ detail, summary }: { detail: MatchDetail; summary: MatchListItem | null }) {
@@ -238,7 +254,7 @@ function MatchDetailView({ detail, summary }: { detail: MatchDetail; summary: Ma
 
   const hasScore = homeScore !== null && awayScore !== null;
   const hasHalfScore = halfHomeScore !== null && halfAwayScore !== null;
-  const needsSettle = hasScore && summary && !summary.settled;
+  const resultStatus = getResultStatus(summary);
 
   const oddsByType: Record<string, OddsRow[]> = {};
   for (const o of odds) {
@@ -257,9 +273,9 @@ function MatchDetailView({ detail, summary }: { detail: MatchDetail; summary: Ma
               {detail.tournamentName} · {new Date(detail.kickoffTime).toLocaleString("zh-CN", { month: "2-digit", day: "numeric", hour: "2-digit", minute: "2-digit" })}
             </div>
           </div>
-          {needsSettle && (
+          {resultStatus.badgeLabel && (
             <span className="text-xs px-2 py-1 rounded-full bg-amber-500/15 text-amber-500 border border-amber-500/30">
-              赛果已更新，下注仍待结算
+              {resultStatus.badgeLabel}
             </span>
           )}
         </div>
@@ -364,8 +380,8 @@ function MatchDetailView({ detail, summary }: { detail: MatchDetail; summary: Ma
       {/* Summary */}
       <div className="glass rounded-xl p-4">
         <h3 className="font-display text-sm font-semibold mb-3">中奖汇总</h3>
-        {needsSettle ? (
-          <div className="text-text-muted text-sm">赛果已更新，下注仍待结算</div>
+        {resultStatus.summaryLabel ? (
+          <div className="text-text-muted text-sm">{resultStatus.summaryLabel}</div>
         ) : (
           <div className="grid grid-cols-4 gap-3 text-center">
             <SummaryCell label="中奖笔数" value={summary?.winCount?.toString() ?? "0"} accent />
