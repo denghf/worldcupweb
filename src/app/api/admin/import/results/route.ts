@@ -54,7 +54,7 @@ function parseResults(html: string, importDate: string): ParsedResult[] {
 
   for (const row of rows) {
     const text = stripHtml(row[1]);
-    const m = text.match(/^(周[一二三四五六日]\d{3})\s+(\S+)\s+(\d{2}-\d{2})\s+\d{2}:\d{2}\s+(\S+)\s+-?\d+\s+(\S+)\s+\((\d+):(\d+)\)\s+(\d+):(\d+)/);
+    const m = text.match(/^(周[一二三四五六日]\d{3})\s+(\S+)\s+(\d{2}-\d{2})\s+\d{2}:\d{2}\s+(\S+)\s+[+-]?\d+\s+(\S+)\s+\((\d+):(\d+)\)\s+(\d+):(\d+)/);
     if (m) {
       results.push({
         matchNo: m[1],
