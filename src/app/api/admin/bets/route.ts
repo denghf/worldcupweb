@@ -19,6 +19,7 @@ export const GET = withAdmin(async (req: NextRequest) => {
         include: {
           match: {
             select: {
+              id: true,
               homeTeam: true,
               awayTeam: true,
               kickoffTime: true,
