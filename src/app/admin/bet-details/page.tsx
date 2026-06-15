@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef, type ReactNode } from "react";
+import { useState, useEffect, useMemo, type ReactNode } from "react";
 import {
   STATUS_MAP,
   MARKET_NAMES,
@@ -88,8 +88,6 @@ export default function BetDetailsPage() {
   const [nameFilter, setNameFilter] = useState<string>("");
   const [expandedBet, setExpandedBet] = useState<number | null>(null);
   const [selectedOverviewOption, setSelectedOverviewOption] = useState<string | null>(null);
-  const [activeItemKey, setActiveItemKey] = useState<string | null>(null);
-  const itemRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   useEffect(() => {
     fetch("/api/admin/bets")
@@ -111,13 +109,6 @@ export default function BetDetailsPage() {
       .catch(() => setLoading(false));
   }, []);
 
-  useEffect(() => {
-    if (!activeItemKey) return;
-    const frame = requestAnimationFrame(() => {
-      itemRefs.current[activeItemKey]?.scrollIntoView({ behavior: "smooth", block: "center" });
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [activeItemKey, expandedBet]);
 
   const uniqueNames = useMemo(
     () => Array.from(new Set(bets.map((b) => b.user?.nickname).filter(Boolean))),
@@ -134,10 +125,6 @@ export default function BetDetailsPage() {
 
   const matchGroups = useMemo(() => buildMatchBetGroups(filtered), [filtered]);
 
-  const focusBetItem = (record: OverviewRecord) => {
-    setExpandedBet(record.betId);
-    setActiveItemKey(getBetItemKey(record.betId, record.itemId));
-  };
 
   return (
     <div className="w-full">
@@ -157,7 +144,6 @@ export default function BetDetailsPage() {
               onClick={() => {
                 setFilter(f.key);
                 setSelectedOverviewOption(null);
-                setActiveItemKey(null);
               }}
               className={`px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
                 filter === f.key
@@ -174,7 +160,6 @@ export default function BetDetailsPage() {
           onChange={(e) => {
             setNameFilter(e.target.value);
             setSelectedOverviewOption(null);
-            setActiveItemKey(null);
           }}
           className="input-field rounded-lg px-3 py-1.5 text-sm"
         >
@@ -244,19 +229,12 @@ export default function BetDetailsPage() {
                       <div className="px-4 pb-3 border-t border-border pt-3 space-y-3 animate-fade-in-up">
                         {bet.items.map((item) => {
                           const resultInfo = RESULT_MAP[item.result] ?? { label: item.result, color: "" };
-                          const itemKey = getBetItemKey(bet.id, item.id);
-                          const highlighted = activeItemKey === itemKey;
                           return (
                             <div
                               key={item.id}
-                              ref={(node) => { itemRefs.current[itemKey] = node; }}
-                              className={`bg-bg-primary rounded-lg overflow-hidden border transition-all duration-300 ${
-                                highlighted
-                                  ? "border-red/60 ring-2 ring-red/25 shadow-lg shadow-red/10"
-                                  : "border-transparent"
-                              }`}
+                              className="bg-bg-primary rounded-lg overflow-hidden"
                             >
-                              <div className={`px-3 py-2 border-b border-border/30 flex items-center justify-between gap-3 ${highlighted ? "bg-red/5" : ""}`}>
+                              <div className="px-3 py-2 border-b border-border/30 flex items-center justify-between gap-3">
                                 <div className="flex items-center gap-2 min-w-0">
                                   <span className="text-sm font-medium truncate">{item.match.homeTeam} vs {item.match.awayTeam}</span>
                                   {item.match.homeScore !== null && item.match.awayScore !== null && (
@@ -306,9 +284,7 @@ export default function BetDetailsPage() {
           <MatchBetOverview
             groups={matchGroups}
             selectedOptionKey={selectedOverviewOption}
-            activeItemKey={activeItemKey}
             onSelectOption={setSelectedOverviewOption}
-            onSelectRecord={focusBetItem}
           />
         </div>
       )}
@@ -366,15 +342,11 @@ function buildMatchBetGroups(bets: Bet[]): MatchBetGroup[] {
 function MatchBetOverview({
   groups,
   selectedOptionKey,
-  activeItemKey,
   onSelectOption,
-  onSelectRecord,
 }: {
   groups: MatchBetGroup[];
   selectedOptionKey: string | null;
-  activeItemKey: string | null;
   onSelectOption: (key: string) => void;
-  onSelectRecord: (record: OverviewRecord) => void;
 }) {
   return (
     <aside className="glass rounded-2xl p-3 lg:sticky lg:top-4 max-h-[calc(100vh-7rem)] overflow-y-auto">
@@ -397,9 +369,7 @@ function MatchBetOverview({
               key={group.key}
               group={group}
               selectedOptionKey={selectedOptionKey}
-              activeItemKey={activeItemKey}
               onSelectOption={onSelectOption}
-              onSelectRecord={onSelectRecord}
             />
           ))}
         </div>
@@ -411,15 +381,11 @@ function MatchBetOverview({
 function MatchBetOverviewCard({
   group,
   selectedOptionKey,
-  activeItemKey,
   onSelectOption,
-  onSelectRecord,
 }: {
   group: MatchBetGroup;
   selectedOptionKey: string | null;
-  activeItemKey: string | null;
   onSelectOption: (key: string) => void;
-  onSelectRecord: (record: OverviewRecord) => void;
 }) {
   const selected = selectedOptionKey ? parseOverviewOptionKey(selectedOptionKey) : null;
   const selectedWagerKey = selected?.matchKey === group.key
@@ -465,8 +431,6 @@ function MatchBetOverviewCard({
               key={`${record.betId}-${record.itemId}`}
               record={record}
               highlighted={selectedWagerKey === getWagerOptionKey(record.betMarket, record.selectedOption)}
-              active={activeItemKey === getBetItemKey(record.betId, record.itemId)}
-              onClick={() => onSelectRecord(record)}
             />
           ))}
         </div>
@@ -502,7 +466,7 @@ function OverviewOddsGrid({
         return (
           <section key={market} className="space-y-1.5">
             <div className="text-sm font-semibold text-text-muted">{MARKET_NAMES[market] ?? market}</div>
-            <div className="grid grid-cols-3 gap-1.5">
+            <div className={getOverviewOddsGridClass(market)}>
               {rows.map((o) => {
                 const wagerKey = getWagerOptionKey(o.betType, o.optionKey);
                 const overviewKey = getOverviewOptionKey(group.key, o.betType, o.optionKey);
@@ -527,6 +491,12 @@ function OverviewOddsGrid({
   );
 }
 
+function getOverviewOddsGridClass(market: string) {
+  if (market === "TOTAL_GOALS") return "grid grid-cols-8 gap-1";
+  if (market === "CORRECT_SCORE") return "grid grid-cols-6 gap-1";
+  return "grid grid-cols-3 gap-1.5";
+}
+
 function OverviewOddsButton({
   label,
   odds,
@@ -545,7 +515,7 @@ function OverviewOddsButton({
       type="button"
       disabled={!wagered}
       onClick={onClick}
-      className={`flex min-w-0 items-center justify-center gap-1 rounded border px-1.5 py-1.5 text-center text-xs transition-all ${
+      className={`flex min-w-0 items-center justify-center gap-0.5 rounded border px-1 py-1.5 text-center text-xs transition-all ${
         wagered
           ? selected
             ? "border-red bg-red/20 text-red ring-1 ring-red/40 font-semibold"
@@ -562,36 +532,25 @@ function OverviewOddsButton({
 function OverviewRecordButton({
   record,
   highlighted,
-  active,
-  onClick,
 }: {
   record: OverviewRecord;
   highlighted: boolean;
-  active: boolean;
-  onClick: () => void;
 }) {
-  const resultInfo = RESULT_MAP[record.result] ?? { label: record.result, color: "" };
+  const betContent = `${MARKET_NAMES[record.betMarket] ?? record.betMarket} ${formatOptionLabel(record.betMarket, record.selectedOption)}`;
   return (
-    <button
-      type="button"
-      onClick={onClick}
+    <div
       className={`w-full rounded-md border px-2 py-1.5 text-left transition-all ${
-        active
-          ? "border-red/70 bg-red/20"
-          : highlighted
-            ? "border-red/35 bg-red/10"
-            : "border-border/40 bg-bg-surface hover:border-red/35 hover:bg-red/10"
+        highlighted
+          ? "border-red/35 bg-red/10"
+          : "border-border/40 bg-bg-surface"
       }`}
     >
-      <div className="flex items-center justify-between gap-2 text-xs">
-        <span className="font-medium truncate">{record.userNickname}</span>
-        <span className={`${resultInfo.color} shrink-0`}>{resultInfo.label}</span>
+      <div className="flex items-center gap-2 text-[12px] leading-4">
+        <span className="font-medium shrink-0">{record.userNickname}</span>
+        <span className="text-text-muted truncate">{betContent}</span>
+        <span className="shrink-0 text-text-muted">@ {record.lockedOdds.toFixed(2)}</span>
       </div>
-      <div className="flex items-center justify-between gap-2 text-[11px] text-text-muted mt-0.5">
-        <span className="truncate">{record.betMode === "PARLAY" ? "串关" : "单关"} · {record.betUid}</span>
-        <span className="shrink-0">@ {record.lockedOdds.toFixed(2)}</span>
-      </div>
-    </button>
+    </div>
   );
 }
 
@@ -746,6 +705,3 @@ function parseOverviewOptionKey(key: string) {
   return { matchKey, betMarket, selectedOption };
 }
 
-function getBetItemKey(betId: number, itemId: number) {
-  return `${betId}-${itemId}`;
-}
