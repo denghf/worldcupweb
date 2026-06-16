@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { displayTeamName } from "@/lib/team-display";
 import {
   MARKET_NAMES,
   X1X_LABELS,
@@ -36,7 +37,7 @@ interface Bet {
   id: number;
   user: { nickname: string };
   betMode: string;
-  items: { match: { homeTeam: string; awayTeam: string }; betMarket: string; selectedOption: string; lockedOdds: number }[];
+  items: { match: { homeTeam: string; awayTeam: string; kickoffTime: string; status: string }; betMarket: string; selectedOption: string; lockedOdds: number }[];
   totalAmount: number;
   lockedTotalOdds: number;
   status: string;
@@ -282,6 +283,7 @@ export default function BetManagementPage() {
               <tbody>
                 {activeBets.map((bet) => {
                   const isParlay = bet.betMode === "PARLAY";
+                  const canDelete = bet.items.every((item) => item.match.status === "UPCOMING" && new Date(item.match.kickoffTime).getTime() > Date.now());
                   return (
                     <tr key={bet.id} className="border-b border-border/50 last:border-0">
                       <td className="py-2.5 px-4">{bet.user?.nickname || "-"}</td>
@@ -295,7 +297,7 @@ export default function BetManagementPage() {
                       <td className="py-2.5 px-4">
                         {bet.items.map((it, i) => (
                           <div key={i} className={i > 0 ? "mt-0.5" : ""}>
-                            <span className="text-text-secondary text-sm">{it.match.homeTeam} vs {it.match.awayTeam}</span>
+                            <span className="text-text-secondary text-sm">{displayTeamName(it.match.homeTeam)} vs {displayTeamName(it.match.awayTeam)}</span>
                             <span className="text-accent text-sm ml-1">{formatOptionLabel(it.betMarket as BetItem["betMarket"], it.selectedOption)}</span>
                           </div>
                         ))}
@@ -303,10 +305,12 @@ export default function BetManagementPage() {
                       <td className="py-2.5 px-4 text-right text-sm">{Number(bet.lockedTotalOdds).toFixed(2)}</td>
                       <td className="py-2.5 px-4 text-right">{Number(bet.totalAmount).toFixed(0)}</td>
                       <td className="py-2.5 px-4 text-right">
-                        <button onClick={() => setDeleteTarget(bet)}
-                          className="text-sm px-2 py-1 rounded bg-red/10 text-red hover:bg-red/20 transition-colors">
-                          删除
-                        </button>
+                        {canDelete && (
+                          <button onClick={() => setDeleteTarget(bet)}
+                            className="text-sm px-2 py-1 rounded bg-red/10 text-red hover:bg-red/20 transition-colors">
+                            删除
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );
@@ -394,7 +398,7 @@ export default function BetManagementPage() {
                             checked ? "border-accent/50 bg-accent/10 text-accent" : "border-border bg-bg-primary hover:bg-bg-hover"
                           }`}
                         >
-                          <div className="truncate text-sm font-medium">{m.homeTeam} vs {m.awayTeam}</div>
+                          <div className="truncate text-sm font-medium">{displayTeamName(m.homeTeam)} vs {displayTeamName(m.awayTeam)}</div>
                           <div className="mt-0.5 text-xs text-text-muted">{formatMatchTime(m.kickoffTime)}</div>
                         </button>
                       );
@@ -405,7 +409,7 @@ export default function BetManagementPage() {
 
               {selectedMatchData && (
                 <div className="bg-bg-primary rounded-lg p-3 mb-3 space-y-1">
-                  <div className="text-sm font-medium mb-2">{selectedMatchData.homeTeam} vs {selectedMatchData.awayTeam}</div>
+                  <div className="text-sm font-medium mb-2">{displayTeamName(selectedMatchData.homeTeam)} vs {displayTeamName(selectedMatchData.awayTeam)}</div>
 
                   <OddsSection title="胜平负" columns="grid-cols-3" key={`single-${selectedMatchData.id}-x1x`}>
                     {Object.entries(selectedMatchData.odds.x1x).map(([key, odds]) => (
@@ -472,7 +476,7 @@ export default function BetManagementPage() {
                   {singleSelections.map((sel, idx) => (
                     <div key={`${sel.matchId}-${sel.betMarket}-${sel.selectedOption}`} className="flex items-center gap-2 bg-bg-primary rounded-lg px-3 py-2">
                       <div className="flex-1 min-w-0">
-                        <div className="truncate text-xs font-medium text-text-secondary">{sel.homeTeam} vs {sel.awayTeam}</div>
+                        <div className="truncate text-xs font-medium text-text-secondary">{displayTeamName(sel.homeTeam)} vs {displayTeamName(sel.awayTeam)}</div>
                         <div>
                           <span className="text-xs">{MARKET_NAMES[sel.betMarket]}</span>
                           <span className="text-xs text-accent ml-1">{formatOptionLabel(sel.betMarket, sel.selectedOption)}</span>
@@ -509,7 +513,7 @@ export default function BetManagementPage() {
                       <label key={m.id} className="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-bg-hover transition-colors border-b border-border/30 last:border-0">
                         <input type="checkbox" checked={checked} onChange={() => toggleParlayMatch(m.id)}
                           className="w-3.5 h-3.5 rounded accent-accent" />
-                        <span className="text-sm">{m.homeTeam} vs {m.awayTeam}</span>
+                        <span className="text-sm">{displayTeamName(m.homeTeam)} vs {displayTeamName(m.awayTeam)}</span>
                       </label>
                     );
                   })}
@@ -540,7 +544,7 @@ export default function BetManagementPage() {
                                 className={`text-text-muted transition-transform ${isOpen ? "rotate-90" : ""}`}>
                                 <path d="M9 18l6-6-6-6" />
                               </svg>
-                              <span className="text-sm font-medium">{match.homeTeam} vs {match.awayTeam}</span>
+                              <span className="text-sm font-medium">{displayTeamName(match.homeTeam)} vs {displayTeamName(match.awayTeam)}</span>
                             </div>
                             {picked ? (
                               <div className="flex items-center gap-1.5">
@@ -657,7 +661,7 @@ export default function BetManagementPage() {
             <div className="bg-bg-primary rounded-lg px-3 py-2 mb-3 text-xs space-y-0.5">
               {deleteTarget.items.map((it, i) => (
                 <div key={i}>
-                  {it.match.homeTeam} vs {it.match.awayTeam}
+                  {displayTeamName(it.match.homeTeam)} vs {displayTeamName(it.match.awayTeam)}
                   <span className="text-accent ml-1">{formatOptionLabel(it.betMarket as BetItem["betMarket"], it.selectedOption)}</span>
                   <span className="text-text-muted ml-1">@ {Number(it.lockedOdds).toFixed(2)}</span>
                 </div>

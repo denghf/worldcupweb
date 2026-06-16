@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { apiSuccess } from "@/lib/response";
 import { withAdmin } from "@/lib/with-auth";
+import { displayTeamName } from "@/lib/team-display";
 
 const X1X_LABELS: Record<string, string> = { home: "胜", draw: "平", away: "负" };
 const HANDICAP_LABELS: Record<string, string> = { home: "让胜", draw: "让平", away: "让负" };
@@ -44,7 +45,7 @@ export const GET = withAdmin(async () => {
     betAmount: Number(bet.totalAmount),
     lockedTotalOdds: Number(bet.lockedTotalOdds),
     winAmount: Number(bet.actualPayout ?? 0),
-    match: bet.items.map((it) => `${it.match.homeTeam} vs ${it.match.awayTeam}`).join(" · "),
+    match: bet.items.map((it) => `${displayTeamName(it.match.homeTeam)} vs ${displayTeamName(it.match.awayTeam)}`).join(" · "),
     option: bet.items.map((it) => `${MARKET_NAMES[it.betMarket] || it.betMarket} ${formatOptionLabel(it.betMarket, it.selectedOption)}`).join(" + "),
     settledAt: bet.settledAt?.toISOString(),
   }));

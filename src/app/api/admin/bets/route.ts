@@ -23,6 +23,7 @@ export const GET = withAdmin(async (req: NextRequest) => {
               homeTeam: true,
               awayTeam: true,
               kickoffTime: true,
+              status: true,
               homeScore: true,
               awayScore: true,
               halfHomeScore: true,
@@ -165,15 +166,16 @@ export const DELETE = withAdmin(async (req: NextRequest) => {
 
     const bet = await prisma.bet.findUnique({
       where: { id: betId },
-      include: { items: { include: { match: { select: { status: true } } } } },
+      include: { items: { include: { match: { select: { kickoffTime: true, status: true } } } } },
     });
     if (!bet) return apiError("下注单不存在");
 
     const settled = ["WON", "LOST", "CANCELLED"];
     if (settled.includes(bet.status)) return apiError("已结算的下注不能删除");
 
-    const anyMatchFinished = bet.items.some((item) => item.match.status === "FINISHED");
-    if (anyMatchFinished) return apiError("关联比赛已结束，不能删除");
+    const now = new Date();
+    const anyMatchStarted = bet.items.some((item) => item.match.status !== "UPCOMING" || item.match.kickoffTime <= now);
+    if (anyMatchStarted) return apiError("关联比赛已开赛，不能删除");
 
     await prisma.bet.delete({ where: { id: betId } });
 

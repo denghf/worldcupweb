@@ -20,7 +20,7 @@ interface MatchInput {
 }
 
 const TEAM_ALIASES: Record<string, string> = {
-  "沙特阿拉伯": "沙特",
+  "沙特": "沙特阿拉伯",
   "乌兹别克": "乌兹别克斯坦",
   "刚果(金)": "刚果（金）",
 };

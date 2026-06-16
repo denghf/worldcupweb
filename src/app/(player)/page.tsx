@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { displayTeamName } from "@/lib/team-display";
 
 const WORLD_CUP_KICKOFF = new Date("2026-06-11T00:00:00-04:00").getTime();
 
@@ -144,6 +145,7 @@ const TEAM_MARKS: Record<string, string> = {
   西班牙: "🇪🇸",
   佛得角: "🇨🇻",
   沙特: "🇸🇦",
+  沙特阿拉伯: "🇸🇦",
   乌拉圭: "🇺🇾",
   法国: "🇫🇷",
   塞内加尔: "🇸🇳",
@@ -376,13 +378,14 @@ function MatchCard({
 }
 
 function TeamBlock({ align, name, logo, compact = false }: { align: "left" | "right"; name: string; logo: string | null; compact?: boolean }) {
-  const mark = logo || TEAM_MARKS[name] || "🏳️";
+  const displayName = displayTeamName(name);
+  const mark = logo || TEAM_MARKS[displayName] || TEAM_MARKS[name] || "🏳️";
 
   return (
     <div className={`flex min-w-0 items-center gap-2 ${align === "right" ? "justify-end text-right" : ""}`}>
       {align === "left" && <span className={`flag-badge shrink-0 ${compact ? "h-8 w-8 text-lg" : "text-xl"}`}>{mark}</span>}
       <div className="min-w-0">
-        <div className={`${compact ? "text-xs" : "text-sm"} truncate font-extrabold text-text-primary`}>{name}</div>
+        <div className={`${compact ? "text-xs" : "text-sm"} truncate font-extrabold text-text-primary`}>{displayName}</div>
         <div className="mt-0.5 text-[10px] font-semibold text-text-muted">{align === "left" ? "主" : "客"}</div>
       </div>
       {align === "right" && <span className={`flag-badge shrink-0 ${compact ? "h-8 w-8 text-lg" : "text-xl"}`}>{mark}</span>}

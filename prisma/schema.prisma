@@ -263,3 +263,51 @@ model UserStats {
 
   @@map("user_stats")
 }
+
+// ============================
+// 拉取日志
+// ============================
+
+model PullLog {
+  id         Int           @id @default(autoincrement())
+  batchId    String?       @db.VarChar(36)
+  source     String        @default("500.com") @db.VarChar(50)
+  trigger    PullLogTrigger
+  kind       PullLogKind
+  status     PullLogStatus
+  importDate String        @db.VarChar(10)
+  fetched    Int           @default(0)
+  updated    Int           @default(0)
+  created    Int           @default(0)
+  settled    Int           @default(0)
+  skipped    Int           @default(0)
+  message    String?       @db.VarChar(200)
+  error      String?
+  items      Json
+  startedAt  DateTime
+  finishedAt DateTime
+  createdAt  DateTime      @default(now())
+
+  @@index([trigger, startedAt])
+  @@index([kind, startedAt])
+  @@index([batchId])
+  @@map("pull_logs")
+}
+
+enum PullLogTrigger {
+  MANUAL
+  SCHEDULED
+  @@map("pull_log_trigger")
+}
+
+enum PullLogKind {
+  ODDS
+  RESULTS
+  @@map("pull_log_kind")
+}
+
+enum PullLogStatus {
+  SUCCESS
+  FAILED
+  @@map("pull_log_status")
+}

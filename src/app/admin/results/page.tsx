@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { displayTeamName } from "@/lib/team-display";
 import {
   MARKET_NAMES,
   X1X_LABELS,
@@ -177,7 +178,7 @@ export default function ResultsPage() {
                 >
                   <div className="flex items-center justify-between mb-1">
                     <span className={`text-sm font-medium truncate ${active ? "text-accent" : ""}`}>
-                      {m.homeTeam} {m.homeScore ?? "-"}:{m.awayScore ?? "-"} {m.awayTeam}
+                      {displayTeamName(m.homeTeam)} {m.homeScore ?? "-"}:{m.awayScore ?? "-"} {displayTeamName(m.awayTeam)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-xs text-text-muted">
@@ -268,7 +269,7 @@ function MatchDetailView({ detail, summary }: { detail: MatchDetail; summary: Ma
       <div className="glass rounded-xl p-4">
         <div className="flex items-start justify-between mb-3">
           <div>
-            <div className="text-base font-semibold">{homeTeam} vs {awayTeam}</div>
+            <div className="text-base font-semibold">{displayTeamName(homeTeam)} vs {displayTeamName(awayTeam)}</div>
             <div className="text-xs text-text-muted mt-0.5">
               {detail.tournamentName} · {new Date(detail.kickoffTime).toLocaleString("zh-CN", { month: "2-digit", day: "numeric", hour: "2-digit", minute: "2-digit" })}
             </div>

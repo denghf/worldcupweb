@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { displayTeamName } from "@/lib/team-display";
 
 interface Tournament {
   id:number;
@@ -45,6 +46,68 @@ interface LocalMatch {
   kickoffTime: string;
   handicap?:number;
   odds: { betType: string; optionKey: string; oddsValue:number }[];
+}
+
+type PullKind = "ODDS" | "RESULTS";
+type PullStatus = "SUCCESS" | "FAILED";
+
+type OddsPullItem = {
+  matchNo: string;
+  apiMatchId: string;
+  matchId?: number;
+  homeTeam: string;
+  awayTeam: string;
+  kickoffTime: string;
+  handicap: number | null;
+  action: "updated" | "created";
+  matchedBy: "apiMatchId" | "fuzzy" | "created";
+  marketCounts: Record<string, number>;
+  oddsCount: number;
+};
+
+type ResultsPullItem = {
+  matchNo: string;
+  apiMatchId: string;
+  matchId?: number;
+  homeTeam: string;
+  awayTeam: string;
+  kickoffDate: string;
+  homeScore: number;
+  awayScore: number;
+  halfHomeScore: number;
+  halfAwayScore: number;
+  action: "settled" | "skipped";
+  matchedBy: "apiMatchId" | "fuzzy" | "none";
+  reason?: "no_matching_match" | "already_finished_without_pending_items";
+};
+
+type PullOutcome = {
+  kind: PullKind;
+  status: PullStatus;
+  importDate: string;
+  fetched: number;
+  updated?: number;
+  created?: number;
+  settled?: number;
+  skipped?: number;
+  message?: string | null;
+  error?: string | null;
+  items: (OddsPullItem | ResultsPullItem)[];
+};
+
+type PullLog = PullOutcome & {
+  id: number;
+  batchId: string | null;
+  source: string;
+  trigger: "MANUAL" | "SCHEDULED";
+  startedAt: string;
+  finishedAt: string;
+  createdAt: string;
+};
+
+function getBeijingDate(offsetDays = 0) {
+  const date = new Date(Date.now() + (8 * 3600 + offsetDays * 86400) * 1000);
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
 }
 
 export default function AdminTournamentsPage() {
@@ -93,9 +156,13 @@ export default function AdminTournamentsPage() {
   // 500.com fetch
   const [fetch500Loading, setFetch500Loading] = useState(false);
   const [fetchResultsLoading, setFetchResultsLoading] = useState(false);
+  const [pullOutcome, setPullOutcome] = useState<PullOutcome | null>(null);
+  const [scheduledPullLogs, setScheduledPullLogs] = useState<PullLog[]>([]);
+  const [scheduledPullLogsLoading, setScheduledPullLogsLoading] = useState(true);
 
   useEffect(() => {
     loadData();
+    loadScheduledPullLogs();
   }, []);
 
   async function loadData() {
@@ -112,6 +179,17 @@ export default function AdminTournamentsPage() {
     }
     if (mData.success) setMatches(mData.data || []);
     setLoading(false);
+  }
+
+  async function loadScheduledPullLogs() {
+    setScheduledPullLogsLoading(true);
+    try {
+      const res = await fetch("/api/admin/pull-logs?trigger=SCHEDULED&limit=20");
+      const data = await res.json();
+      if (data.success) setScheduledPullLogs(data.data || []);
+    } finally {
+      setScheduledPullLogsLoading(false);
+    }
   }
 
   const getMatchesForTournament = (tournamentId:number) =>
@@ -172,21 +250,21 @@ export default function AdminTournamentsPage() {
 
   const handleFetch500 = async () => {
     if (fetch500Loading) return;
-    const date = prompt("请输入日期 (YYYY-MM-DD)：", new Date().toISOString().slice(0, 10));
+    const date = prompt("请输入日期 (YYYY-MM-DD)：", getBeijingDate());
     if (!date) return;
     setFetch500Loading(true);
     try {
       const res = await fetch("/api/admin/import/500", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ date }) });
       const data = await res.json();
       if (data.success) {
-        const { fetched, updated, created } = data.data;
-        alert(`抓取 ${fetched} 场，更新 ${updated} 场，新建 ${created} 场`);
+        setPullOutcome({ kind: "ODDS", status: "SUCCESS", importDate: date, ...data.data });
         loadData();
+        loadScheduledPullLogs();
       } else {
-        alert(data.error || "抓取失败");
+        setPullOutcome({ kind: "ODDS", status: "FAILED", importDate: date, fetched: 0, items: [], error: data.error || "抓取失败" });
       }
     } catch {
-      alert("网络错误");
+      setPullOutcome({ kind: "ODDS", status: "FAILED", importDate: date, fetched: 0, items: [], error: "网络错误" });
     } finally {
       setFetch500Loading(false);
     }
@@ -194,22 +272,21 @@ export default function AdminTournamentsPage() {
 
   const handleFetchResults = async () => {
     if (fetchResultsLoading) return;
-    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-    const date = prompt("请输入日期 (YYYY-MM-DD)：", yesterday);
+    const date = prompt("请输入日期 (YYYY-MM-DD)：", getBeijingDate(-1));
     if (!date) return;
     setFetchResultsLoading(true);
     try {
       const res = await fetch("/api/admin/import/results", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ date }) });
       const data = await res.json();
       if (data.success) {
-        const { fetched, settled, skipped } = data.data;
-        alert(`抓取 ${fetched} 场赛果，已结算 ${settled} 场，跳过 ${skipped ?? 0} 场`);
+        setPullOutcome({ kind: "RESULTS", status: "SUCCESS", importDate: date, ...data.data });
         loadData();
+        loadScheduledPullLogs();
       } else {
-        alert(data.error || "抓取失败");
+        setPullOutcome({ kind: "RESULTS", status: "FAILED", importDate: date, fetched: 0, items: [], error: data.error || "抓取失败" });
       }
     } catch {
-      alert("网络错误");
+      setPullOutcome({ kind: "RESULTS", status: "FAILED", importDate: date, fetched: 0, items: [], error: "网络错误" });
     } finally {
       setFetchResultsLoading(false);
     }
@@ -385,7 +462,9 @@ export default function AdminTournamentsPage() {
   };
 
   return (
-    <div className="max-w-5xl">
+    <div className="max-w-7xl">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px] items-start">
+        <div className="min-w-0">
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="font-display text-lg font-semibold">赛事管理</h2>
@@ -485,7 +564,7 @@ export default function AdminTournamentsPage() {
                             <div key={m.id} className="bg-bg-primary rounded-lg px-3 py-2.5 flex items-center justify-between">
                               <div className="flex items-center gap-2 flex-1 min-w-0">
                                 <span className="text-sm text-text-muted whitespace-nowrap">{timeStr}</span>
-                                <span className="text-sm font-medium truncate">{m.homeTeam} vs {m.awayTeam}</span>
+                                <span className="text-sm font-medium truncate">{displayTeamName(m.homeTeam)} vs {displayTeamName(m.awayTeam)}</span>
                                 {m.status === "UPCOMING" && (
                                   <span className="text-sm bg-accent/10 text-accent px-1.5 py-0.5 rounded">未开赛</span>
                                 )}
@@ -540,6 +619,16 @@ export default function AdminTournamentsPage() {
             );
           })}
         </div>
+      )}
+        </div>
+        <ScheduledPullLogPanel logs={scheduledPullLogs} loading={scheduledPullLogsLoading} onRefresh={loadScheduledPullLogs} />
+      </div>
+
+      {/* Pull Outcome Modal */}
+      {pullOutcome && (
+        <Modal onClose={() => setPullOutcome(null)} title={`${pullOutcome.kind === "ODDS" ? "更新世界杯赔率" : "更新赛果"} · ${pullOutcome.importDate}`} wide>
+          <PullOutcomeContent outcome={pullOutcome} />
+        </Modal>
       )}
 
       {/* Create Tournament Modal */}
@@ -612,7 +701,7 @@ export default function AdminTournamentsPage() {
 
       {/* Edit Odds Modal */}
       {showEditOdds && selectedMatch && (
-        <Modal onClose={() => setShowEditOdds(false)} title={`编辑赔率 · ${selectedMatch.homeTeam} vs ${selectedMatch.awayTeam}`} wide>
+        <Modal onClose={() => setShowEditOdds(false)} title={`编辑赔率 · ${displayTeamName(selectedMatch.homeTeam)} vs ${displayTeamName(selectedMatch.awayTeam)}`} wide>
           <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
             {/* X1X */}
             <div>
@@ -744,17 +833,17 @@ export default function AdminTournamentsPage() {
 
       {/* Settle Modal */}
       {showSettle && settleMatchData && (
-        <Modal onClose={() => setShowSettle(false)} title={`${settleMatchData.status === "FINISHED" ? "修改结算" : "结算"} · ${settleMatchData.homeTeam} vs ${settleMatchData.awayTeam}`}>
+        <Modal onClose={() => setShowSettle(false)} title={`${settleMatchData.status === "FINISHED" ? "修改结算" : "结算"} · ${displayTeamName(settleMatchData.homeTeam)} vs ${displayTeamName(settleMatchData.awayTeam)}`}>
           <div className="space-y-3">
             <div>
               <div className="mb-2 text-sm font-semibold text-text-secondary">半场比分</div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-text-secondary text-sm mb-1.5 block">{settleMatchData.homeTeam}</label>
+                  <label className="text-text-secondary text-sm mb-1.5 block">{displayTeamName(settleMatchData.homeTeam)}</label>
                   <input type="number" value={settleForm.halfHomeScore} onChange={(e) => setSettleForm({ ...settleForm, halfHomeScore: e.target.value })} className="input-field w-full rounded-xl px-4 py-3 text-sm" placeholder="0" />
                 </div>
                 <div>
-                  <label className="text-text-secondary text-sm mb-1.5 block">{settleMatchData.awayTeam}</label>
+                  <label className="text-text-secondary text-sm mb-1.5 block">{displayTeamName(settleMatchData.awayTeam)}</label>
                   <input type="number" value={settleForm.halfAwayScore} onChange={(e) => setSettleForm({ ...settleForm, halfAwayScore: e.target.value })} className="input-field w-full rounded-xl px-4 py-3 text-sm" placeholder="0" />
                 </div>
               </div>
@@ -763,11 +852,11 @@ export default function AdminTournamentsPage() {
               <div className="mb-2 text-sm font-semibold text-text-secondary">全场比分（90分钟）<span className="text-accent ml-1">*用于结算</span></div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-text-secondary text-sm mb-1.5 block">{settleMatchData.homeTeam}</label>
+                  <label className="text-text-secondary text-sm mb-1.5 block">{displayTeamName(settleMatchData.homeTeam)}</label>
                   <input type="number" value={settleForm.homeScore} onChange={(e) => setSettleForm({ ...settleForm, homeScore: e.target.value })} className="input-field w-full rounded-xl px-4 py-3 text-sm" placeholder="0" />
                 </div>
                 <div>
-                  <label className="text-text-secondary text-sm mb-1.5 block">{settleMatchData.awayTeam}</label>
+                  <label className="text-text-secondary text-sm mb-1.5 block">{displayTeamName(settleMatchData.awayTeam)}</label>
                   <input type="number" value={settleForm.awayScore} onChange={(e) => setSettleForm({ ...settleForm, awayScore: e.target.value })} className="input-field w-full rounded-xl px-4 py-3 text-sm" placeholder="0" />
                 </div>
               </div>
@@ -776,11 +865,11 @@ export default function AdminTournamentsPage() {
               <div className="mb-2 text-sm font-semibold text-text-secondary">最终比分（含加时/点球）<span className="text-text-muted ml-1">仅记录，不参与结算</span></div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-text-secondary text-sm mb-1.5 block">{settleMatchData.homeTeam}</label>
+                  <label className="text-text-secondary text-sm mb-1.5 block">{displayTeamName(settleMatchData.homeTeam)}</label>
                   <input type="number" value={settleForm.finalHomeScore} onChange={(e) => setSettleForm({ ...settleForm, finalHomeScore: e.target.value })} className="input-field w-full rounded-xl px-4 py-3 text-sm" placeholder="可选" />
                 </div>
                 <div>
-                  <label className="text-text-secondary text-sm mb-1.5 block">{settleMatchData.awayTeam}</label>
+                  <label className="text-text-secondary text-sm mb-1.5 block">{displayTeamName(settleMatchData.awayTeam)}</label>
                   <input type="number" value={settleForm.finalAwayScore} onChange={(e) => setSettleForm({ ...settleForm, finalAwayScore: e.target.value })} className="input-field w-full rounded-xl px-4 py-3 text-sm" placeholder="可选" />
                 </div>
               </div>
@@ -871,4 +960,196 @@ function Modal({ title, children, onClose, wide }: { title: string; children: Re
       </div>
     </div>
   );
+}
+
+function PullOutcomeContent({ outcome }: { outcome: PullOutcome }) {
+  const isOdds = outcome.kind === "ODDS";
+  const items = outcome.items;
+
+  return (
+    <div className="space-y-4">
+      <div className={`rounded-xl px-4 py-3 ${outcome.status === "SUCCESS" ? "bg-accent/10" : "bg-red/10"}`}>
+        <div className={`text-sm font-semibold ${outcome.status === "SUCCESS" ? "text-accent" : "text-red"}`}>
+          {outcome.status === "SUCCESS" ? "拉取完成" : "拉取失败"}
+        </div>
+        <div className="mt-1 text-sm text-text-secondary">
+          {outcome.error || outcome.message || (isOdds
+            ? `抓取 ${outcome.fetched} 场，更新 ${outcome.updated ?? 0} 场，新建 ${outcome.created ?? 0} 场`
+            : `抓取 ${outcome.fetched} 场赛果，已结算 ${outcome.settled ?? 0} 场，跳过 ${outcome.skipped ?? 0} 场`)}
+        </div>
+      </div>
+
+      {items.length === 0 ? (
+        <div className="text-text-muted text-sm py-6 text-center">暂无赛事明细</div>
+      ) : (
+        <div className="max-h-[58vh] overflow-y-auto pr-1 space-y-2">
+          {items.map((item) => isOdds
+            ? <OddsPullItemRow key={`${item.apiMatchId}-${item.matchId ?? item.matchNo}`} item={item as OddsPullItem} />
+            : <ResultsPullItemRow key={`${item.apiMatchId}-${item.matchId ?? item.matchNo}`} item={item as ResultsPullItem} />
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ScheduledPullLogPanel({ logs, loading, onRefresh }: { logs: PullLog[]; loading: boolean; onRefresh: () => void }) {
+  return (
+    <aside className="glass rounded-xl p-4 xl:sticky xl:top-6">
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <h3 className="font-display text-base font-semibold">定时拉取日志</h3>
+          <p className="text-text-muted text-xs mt-0.5">自动更新记录，赔率不展示具体数值</p>
+        </div>
+        <button onClick={onRefresh} disabled={loading} className="text-xs px-2.5 py-1 rounded-lg bg-bg-elevated text-text-secondary hover:text-text-primary transition-colors disabled:opacity-40">
+          刷新
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="text-text-muted text-sm py-8 text-center">加载日志...</div>
+      ) : logs.length === 0 ? (
+        <div className="text-text-muted text-sm py-8 text-center">暂无定时拉取日志</div>
+      ) : (
+        <div className="space-y-3 max-h-[calc(100vh-160px)] overflow-y-auto pr-1">
+          {logs.map((log) => (
+            <div key={log.id} className="rounded-xl bg-bg-primary border border-border/60 p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs px-1.5 py-0.5 rounded ${log.kind === "ODDS" ? "bg-green/10 text-green" : "bg-blue-500/10 text-blue-400"}`}>
+                      {log.kind === "ODDS" ? "赔率" : "赛果"}
+                    </span>
+                    <span className={`text-xs px-1.5 py-0.5 rounded ${log.status === "SUCCESS" ? "bg-accent/10 text-accent" : "bg-red/10 text-red"}`}>
+                      {log.status === "SUCCESS" ? "成功" : "失败"}
+                    </span>
+                  </div>
+                  <div className="mt-1 text-sm font-medium">{formatLogTime(log.startedAt)}</div>
+                  <div className="text-xs text-text-muted">导入日期 {log.importDate}</div>
+                </div>
+                <div className="text-right text-xs text-text-muted">
+                  {log.kind === "ODDS" ? (
+                    <>
+                      <div>抓取 {log.fetched}</div>
+                      <div>更新 {log.updated} / 新建 {log.created}</div>
+                    </>
+                  ) : (
+                    <>
+                      <div>抓取 {log.fetched}</div>
+                      <div>结算 {log.settled} / 跳过 {log.skipped}</div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {log.error && <div className="mt-2 text-xs text-red">{log.error}</div>}
+              {log.message && !log.error && <div className="mt-2 text-xs text-text-muted">{log.message}</div>}
+
+              {log.items.length > 0 && (
+                <div className="mt-3 space-y-1.5">
+                  {log.items.slice(0, 6).map((item) => log.kind === "ODDS"
+                    ? <OddsLogLine key={`${item.apiMatchId}-${item.matchId ?? item.matchNo}`} item={item as OddsPullItem} />
+                    : <ResultsLogLine key={`${item.apiMatchId}-${item.matchId ?? item.matchNo}`} item={item as ResultsPullItem} />
+                  )}
+                  {log.items.length > 6 && <div className="text-xs text-text-muted text-center pt-1">还有 {log.items.length - 6} 场</div>}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </aside>
+  );
+}
+
+function OddsPullItemRow({ item }: { item: OddsPullItem }) {
+  return (
+    <div className="rounded-xl bg-bg-primary px-4 py-3 border border-border/50">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-sm font-semibold truncate">{displayTeamName(item.homeTeam)} vs {displayTeamName(item.awayTeam)}</div>
+          <div className="mt-0.5 text-xs text-text-muted">{item.matchNo} · {formatShortTime(item.kickoffTime)}</div>
+        </div>
+        <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${item.action === "created" ? "bg-gold/10 text-gold" : "bg-accent/10 text-accent"}`}>
+          {item.action === "created" ? "新建" : "更新"}
+        </span>
+      </div>
+      <div className="mt-2 flex flex-wrap gap-1.5 text-xs text-text-secondary">
+        {Object.entries(item.marketCounts).map(([market, count]) => (
+          <span key={market} className="px-1.5 py-0.5 rounded bg-bg-elevated">{market} {count}</span>
+        ))}
+        <span className="px-1.5 py-0.5 rounded bg-bg-elevated">共 {item.oddsCount} 项</span>
+      </div>
+    </div>
+  );
+}
+
+function ResultsPullItemRow({ item }: { item: ResultsPullItem }) {
+  return (
+    <div className="rounded-xl bg-bg-primary px-4 py-3 border border-border/50">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-sm font-semibold truncate">{displayTeamName(item.homeTeam)} vs {displayTeamName(item.awayTeam)}</div>
+          <div className="mt-0.5 text-xs text-text-muted">{item.matchNo} · {item.kickoffDate} · 半场 {item.halfHomeScore}:{item.halfAwayScore}</div>
+        </div>
+        <div className="text-right shrink-0">
+          <div className="text-lg font-display font-semibold">{item.homeScore}:{item.awayScore}</div>
+          <span className={`text-xs px-2 py-0.5 rounded-full ${item.action === "settled" ? "bg-accent/10 text-accent" : "bg-bg-elevated text-text-muted"}`}>
+            {item.action === "settled" ? "已结算" : reasonLabel(item.reason)}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function OddsLogLine({ item }: { item: OddsPullItem }) {
+  return (
+    <div className="text-xs rounded-lg bg-bg-surface/70 px-2 py-1.5">
+      <div className="flex items-center justify-between gap-2">
+        <span className="truncate">{item.matchNo} {displayTeamName(item.homeTeam)} vs {displayTeamName(item.awayTeam)}</span>
+        <span className="text-text-muted shrink-0">{item.action === "created" ? "新建" : "更新"}</span>
+      </div>
+      <div className="text-text-muted">{formatShortTime(item.kickoffTime)} · {item.oddsCount} 项</div>
+    </div>
+  );
+}
+
+function ResultsLogLine({ item }: { item: ResultsPullItem }) {
+  return (
+    <div className="text-xs rounded-lg bg-bg-surface/70 px-2 py-1.5">
+      <div className="flex items-center justify-between gap-2">
+        <span className="truncate">{item.matchNo} {displayTeamName(item.homeTeam)} vs {displayTeamName(item.awayTeam)}</span>
+        <span className="font-semibold shrink-0">{item.homeScore}:{item.awayScore}</span>
+      </div>
+      <div className="text-text-muted">半场 {item.halfHomeScore}:{item.halfAwayScore} · {item.action === "settled" ? "已结算" : reasonLabel(item.reason)}</div>
+    </div>
+  );
+}
+
+function reasonLabel(reason?: ResultsPullItem["reason"]) {
+  if (reason === "no_matching_match") return "未匹配";
+  if (reason === "already_finished_without_pending_items") return "已处理";
+  return "跳过";
+}
+
+function formatShortTime(value: string) {
+  return new Intl.DateTimeFormat("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(new Date(value));
+}
+
+function formatLogTime(value: string) {
+  return new Intl.DateTimeFormat("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).format(new Date(value));
 }

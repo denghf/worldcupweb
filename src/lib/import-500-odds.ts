@@ -14,7 +14,7 @@ const HALF_FULL_LABELS: Record<string, string> = {
 };
 
 const TEAM_ALIASES: Record<string, string> = {
-  "沙特阿拉伯": "沙特",
+  "沙特": "沙特阿拉伯",
   "乌兹别克": "乌兹别克斯坦",
   "刚果(金)": "刚果（金）",
 };
@@ -26,6 +26,7 @@ interface ParsedOdds {
 }
 
 interface ParsedMatch {
+  matchNo: string;
   apiMatchId: string;
   homeTeam: string;
   awayTeam: string;
@@ -34,10 +35,25 @@ interface ParsedMatch {
   odds: ParsedOdds[];
 }
 
+export interface Import500OddsItem {
+  matchNo: string;
+  apiMatchId: string;
+  matchId?: number;
+  homeTeam: string;
+  awayTeam: string;
+  kickoffTime: string;
+  handicap: number | null;
+  action: "updated" | "created";
+  matchedBy: "apiMatchId" | "fuzzy" | "created";
+  marketCounts: Partial<Record<ParsedOdds["betType"], number>>;
+  oddsCount: number;
+}
+
 export interface Import500OddsSummary {
   fetched: number;
   updated: number;
   created: number;
+  items: Import500OddsItem[];
   message?: string;
 }
 
@@ -137,7 +153,7 @@ function buildMatches(baseBlocks: ReturnType<typeof extractMatchBlocks>): Map<st
       }
     }
 
-    matches.set(block.matchNo, { apiMatchId: `500-${block.matchNo}`, homeTeam, awayTeam, kickoffTime, handicap, odds });
+    matches.set(block.matchNo, { matchNo: block.matchNo, apiMatchId: `500-${block.matchNo}`, homeTeam, awayTeam, kickoffTime, handicap, odds });
   }
 
   return matches;
@@ -189,6 +205,13 @@ function dedupeOdds(odds: ParsedOdds[]): ParsedOdds[] {
   });
 }
 
+function countMarkets(odds: ParsedOdds[]) {
+  return odds.reduce<Import500OddsItem["marketCounts"]>((acc, odd) => {
+    acc[odd.betType] = (acc[odd.betType] ?? 0) + 1;
+    return acc;
+  }, {});
+}
+
 export async function import500Odds(date = getTodayShanghai()): Promise<Import500OddsSummary> {
   const pages = await Promise.all([
     fetchPage(269, date),
@@ -211,7 +234,7 @@ export async function import500Odds(date = getTodayShanghai()): Promise<Import50
   for (const m of fetchedMatches) m.odds = dedupeOdds(m.odds);
 
   if (fetchedMatches.length === 0) {
-    return { fetched: 0, updated: 0, created: 0, message: "当天没有可抓取的比赛" };
+    return { fetched: 0, updated: 0, created: 0, items: [], message: "当天没有可抓取的比赛" };
   }
 
   const apiMatchIds = fetchedMatches.map((m) => m.apiMatchId);
@@ -232,6 +255,7 @@ export async function import500Odds(date = getTodayShanghai()): Promise<Import50
 
   let updated = 0;
   let created = 0;
+  const items: Import500OddsItem[] = [];
 
   for (const m of fetchedMatches) {
     const kickoff = new Date(m.kickoffTime);
@@ -261,6 +285,19 @@ export async function import500Odds(date = getTodayShanghai()): Promise<Import50
         }
       });
       updated++;
+      items.push({
+        matchNo: m.matchNo,
+        apiMatchId: m.apiMatchId,
+        matchId: target.id,
+        homeTeam: m.homeTeam,
+        awayTeam: m.awayTeam,
+        kickoffTime: m.kickoffTime,
+        handicap: m.handicap,
+        action: "updated",
+        matchedBy: existing ? "apiMatchId" : "fuzzy",
+        marketCounts: countMarkets(uniqueOdds),
+        oddsCount: uniqueOdds.length,
+      });
     } else {
       const match = await prisma.match.create({
         data: {
@@ -284,8 +321,21 @@ export async function import500Odds(date = getTodayShanghai()): Promise<Import50
         });
       }
       created++;
+      items.push({
+        matchNo: m.matchNo,
+        apiMatchId: m.apiMatchId,
+        matchId: match.id,
+        homeTeam: m.homeTeam,
+        awayTeam: m.awayTeam,
+        kickoffTime: m.kickoffTime,
+        handicap: m.handicap,
+        action: "created",
+        matchedBy: "created",
+        marketCounts: countMarkets(uniqueOdds),
+        oddsCount: uniqueOdds.length,
+      });
     }
   }
 
-  return { fetched: fetchedMatches.length, updated, created };
+  return { fetched: fetchedMatches.length, updated, created, items };
 }

@@ -8,6 +8,12 @@ const HEADERS = {
   accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
 };
 
+const TEAM_ALIASES: Record<string, string> = {
+  "沙特": "沙特阿拉伯",
+  "乌兹别克": "乌兹别克斯坦",
+  "刚果(金)": "刚果（金）",
+};
+
 interface ParsedResult {
   matchNo: string;
   competition: string;
@@ -20,15 +26,37 @@ interface ParsedResult {
   halfAwayScore: number;
 }
 
+export interface Import500ResultsItem {
+  matchNo: string;
+  apiMatchId: string;
+  matchId?: number;
+  homeTeam: string;
+  awayTeam: string;
+  kickoffDate: string;
+  homeScore: number;
+  awayScore: number;
+  halfHomeScore: number;
+  halfAwayScore: number;
+  action: "settled" | "skipped";
+  matchedBy: "apiMatchId" | "fuzzy" | "none";
+  reason?: "no_matching_match" | "already_finished_without_pending_items";
+}
+
 export interface Import500ResultsSummary {
   fetched: number;
   settled: number;
   skipped: number;
+  items: Import500ResultsItem[];
   message?: string;
 }
 
 function stripHtml(s: string): string {
   return s.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function canonicalTeam(name: string): string {
+  const n = name.trim().replace(/\s+/g, "").replace(/\(/g, "（").replace(/\)/g, "）");
+  return TEAM_ALIASES[n] ?? n;
 }
 
 function getShanghaiDate(date: Date) {
@@ -81,7 +109,7 @@ export async function import500Results(date = getTodayShanghai()): Promise<Impor
   const results = parseResults(html, date).filter((result) => result.competition === "世界杯");
 
   if (results.length === 0) {
-    return { fetched: 0, settled: 0, skipped: 0, message: "当天没有已开奖的比赛" };
+    return { fetched: 0, settled: 0, skipped: 0, items: [], message: "当天没有已开奖的比赛" };
   }
 
   const apiMatchIds = results.map((r) => `500-${r.matchNo}`);
@@ -100,8 +128,8 @@ export async function import500Results(date = getTodayShanghai()): Promise<Impor
     });
     for (const r of unmatched) {
       const found = allMatches.find((m) =>
-        m.homeTeam === r.homeTeam &&
-        m.awayTeam === r.awayTeam &&
+        canonicalTeam(m.homeTeam) === canonicalTeam(r.homeTeam) &&
+        canonicalTeam(m.awayTeam) === canonicalTeam(r.awayTeam) &&
         getShanghaiDate(m.kickoffTime) === r.kickoffDate
       );
       if (found) fuzzyMatches.set(r.matchNo, found);
@@ -110,17 +138,39 @@ export async function import500Results(date = getTodayShanghai()): Promise<Impor
 
   let settled = 0;
   let skipped = 0;
+  const items: Import500ResultsItem[] = [];
 
   for (const r of results) {
-    const byApiId = apiIdMap.get(`500-${r.matchNo}`);
+    const apiMatchId = `500-${r.matchNo}`;
+    const byApiId = apiIdMap.get(apiMatchId);
     const byFuzzy = fuzzyMatches.get(r.matchNo);
     const match = byApiId ?? byFuzzy;
+    const baseItem = {
+      matchNo: r.matchNo,
+      apiMatchId,
+      homeTeam: r.homeTeam,
+      awayTeam: r.awayTeam,
+      kickoffDate: r.kickoffDate,
+      homeScore: r.homeScore,
+      awayScore: r.awayScore,
+      halfHomeScore: r.halfHomeScore,
+      halfAwayScore: r.halfAwayScore,
+    };
 
-    if (!match) { skipped++; continue; }
+    if (!match) {
+      skipped++;
+      items.push({ ...baseItem, action: "skipped", matchedBy: "none", reason: "no_matching_match" });
+      continue;
+    }
 
+    const matchedBy = byApiId ? "apiMatchId" : "fuzzy";
     if (match.status === "FINISHED") {
       const pendingItems = await prisma.betItem.count({ where: { matchId: match.id, result: "PENDING" } });
-      if (pendingItems === 0) { skipped++; continue; }
+      if (pendingItems === 0) {
+        skipped++;
+        items.push({ ...baseItem, matchId: match.id, action: "skipped", matchedBy, reason: "already_finished_without_pending_items" });
+        continue;
+      }
     }
 
     await settleMatchResult({
@@ -134,7 +184,8 @@ export async function import500Results(date = getTodayShanghai()): Promise<Impor
       allowResettle: false,
     });
     settled++;
+    items.push({ ...baseItem, matchId: match.id, action: "settled", matchedBy });
   }
 
-  return { fetched: results.length, settled, skipped };
+  return { fetched: results.length, settled, skipped, items };
 }

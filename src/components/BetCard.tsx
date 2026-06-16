@@ -1,3 +1,5 @@
+import { displayTeamName } from "@/lib/team-display";
+
 interface BetItem {
   match: { homeTeam: string; awayTeam: string };
   betMarket: string;
@@ -55,7 +57,7 @@ export function BetCard({ bet, index, showUser = true }: { bet: BetCardData; ind
             <div key={i} className="flex items-center justify-between text-xs">
               <div className="flex items-center gap-1.5 min-w-0">
                 <span className="shrink-0 text-[10px] text-text-muted num">{i + 1}.</span>
-                <span className="truncate font-medium text-text-primary">{it.match?.homeTeam || "?"} VS {it.match?.awayTeam || "?"}</span>
+                <span className="truncate font-medium text-text-primary">{displayTeamName(it.match?.homeTeam)} VS {displayTeamName(it.match?.awayTeam)}</span>
                 <span className="shrink-0 text-text-muted">·</span>
                 <span className="shrink-0 text-accent">{formatOptionLabel(it.betMarket, it.selectedOption)}</span>
                 <span className="shrink-0 num text-text-muted">@{Number(it.lockedOdds).toFixed(2)}</span>
@@ -70,7 +72,7 @@ export function BetCard({ bet, index, showUser = true }: { bet: BetCardData; ind
       ) : (
         <div className="flex items-center justify-between text-xs">
           <div className="flex items-center gap-1.5 min-w-0">
-            <span className="truncate font-medium text-text-primary">{item.match?.homeTeam || "?"} VS {item.match?.awayTeam || "?"}</span>
+            <span className="truncate font-medium text-text-primary">{displayTeamName(item.match?.homeTeam)} VS {displayTeamName(item.match?.awayTeam)}</span>
             <span className="shrink-0 text-text-muted">·</span>
             <span className="shrink-0 text-accent">{formatOptionLabel(item.betMarket, item.selectedOption)}</span>
             <span className="shrink-0 num text-text-muted">@{Number(item.lockedOdds).toFixed(2)}</span>

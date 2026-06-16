@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, type ReactNode } from "react";
+import { displayTeamName } from "@/lib/team-display";
 import {
   STATUS_MAP,
   MARKET_NAMES,
@@ -236,7 +237,7 @@ export default function BetDetailsPage() {
                             >
                               <div className="px-3 py-2 border-b border-border/30 flex items-center justify-between gap-3">
                                 <div className="flex items-center gap-2 min-w-0">
-                                  <span className="text-sm font-medium truncate">{item.match.homeTeam} vs {item.match.awayTeam}</span>
+                                  <span className="text-sm font-medium truncate">{displayTeamName(item.match.homeTeam)} vs {displayTeamName(item.match.awayTeam)}</span>
                                   {item.match.homeScore !== null && item.match.awayScore !== null && (
                                     <span className="text-sm bg-accent/10 text-accent px-1.5 py-0.5 rounded font-medium shrink-0">
                                       全场 {item.match.homeScore}:{item.match.awayScore}
@@ -398,7 +399,7 @@ function MatchBetOverviewCard({
         <OverviewSectionTitle label="赛事详情" />
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <div className="text-sm font-semibold leading-tight truncate">{group.match.homeTeam} vs {group.match.awayTeam}</div>
+            <div className="text-sm font-semibold leading-tight truncate">{displayTeamName(group.match.homeTeam)} vs {displayTeamName(group.match.awayTeam)}</div>
             <div className="text-xs text-text-muted mt-0.5">
               {new Date(group.match.kickoffTime).toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}
             </div>
