@@ -27,7 +27,6 @@ export const GET = withAdmin(async () => {
       where: { totalBets: { gt: 0 } },
       include: { user: { select: { nickname: true } } },
       orderBy: { netProfit: "desc" },
-      take: 5,
     }),
     prisma.bet.findMany({
       where: {
@@ -74,11 +73,20 @@ export const GET = withAdmin(async () => {
     activeBetsCount,
     wonBetsCount,
     lostBetsCount,
-    topUsers: topUsers.map((u) => ({
-      nickname: u.user.nickname,
-      netProfit: Number(u.netProfit),
-      totalBets: u.totalBets,
-    })),
+    topUsers: topUsers.map((u) => {
+      const totalBetAmount = Number(u.totalBetAmount);
+      const totalWinAmount = Number(u.totalWinAmount);
+      return {
+        nickname: u.user.nickname,
+        totalBetAmount,
+        totalWinAmount,
+        totalBets: u.totalBets,
+        totalWonBets: u.totalWonBets,
+        netProfit: Number(u.netProfit),
+        winRate: u.totalBets > 0 ? (u.totalWonBets / u.totalBets) * 100 : 0,
+        returnRate: totalBetAmount > 0 ? (totalWinAmount / totalBetAmount) * 100 : 0,
+      };
+    }),
     dailyBets,
   });
 });

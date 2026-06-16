@@ -110,11 +110,30 @@ function getBeijingDate(offsetDays = 0) {
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
 }
 
+function getBeijingTodayStartMs() {
+  const beijingNow = new Date(Date.now() + 8 * 3600 * 1000);
+  return Date.UTC(beijingNow.getUTCFullYear(), beijingNow.getUTCMonth(), beijingNow.getUTCDate(), -8, 0, 0, 0);
+}
+
+function isMatchPast(kickoffTime: string) {
+  return new Date(kickoffTime).getTime() < getBeijingTodayStartMs();
+}
+
 export default function AdminTournamentsPage() {
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedTournament, setExpandedTournament] = useState<number | null>(null);
+  const [expandedPast, setExpandedPast] = useState<Set<number>>(new Set());
+
+  const togglePast = (tournamentId: number) => {
+    setExpandedPast((prev) => {
+      const next = new Set(prev);
+      if (next.has(tournamentId)) next.delete(tournamentId);
+      else next.add(tournamentId);
+      return next;
+    });
+  };
 
   // Create tournament modal
   const [showCreateTournament, setShowCreateTournament] = useState(false);
@@ -461,9 +480,71 @@ export default function AdminTournamentsPage() {
     }
   };
 
+  const renderMatchRow = (m: Match) => {
+    const kickoff = new Date(m.kickoffTime);
+    const timeStr = kickoff.toLocaleString("zh-CN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    const isFinished = m.status === "FINISHED";
+    const hasStarted = kickoff.getTime() <= Date.now();
+    const hasOdds = Object.keys(m.odds.x1x).length > 0;
+    return (
+      <div key={m.id} className="bg-bg-primary rounded-lg px-3 py-2.5 flex items-center justify-between">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <span className="text-sm text-text-muted whitespace-nowrap">{timeStr}</span>
+          <span className="text-sm font-medium truncate">{displayTeamName(m.homeTeam)} vs {displayTeamName(m.awayTeam)}</span>
+          {isFinished ? (
+            <span className="text-sm bg-blue-500/10 text-blue-400 px-1.5 py-0.5 rounded">已结算</span>
+          ) : hasStarted ? (
+            <span className="text-sm bg-red/10 text-red px-1.5 py-0.5 rounded">进行中</span>
+          ) : (
+            <span className="text-sm bg-accent/10 text-accent px-1.5 py-0.5 rounded">未开赛</span>
+          )}
+          {isFinished && m.homeScore !== null && (
+            <span className="text-sm font-semibold">
+              {m.homeScore}:{m.awayScore}
+              {m.finalHomeScore !== null && m.finalAwayScore !== null &&
+                (m.finalHomeScore !== m.homeScore || m.finalAwayScore !== m.awayScore) && (
+                <span className="text-text-muted font-normal ml-1">({m.finalHomeScore}:{m.finalAwayScore})</span>
+              )}
+            </span>
+          )}
+          {hasOdds && (
+            <span className="text-sm bg-green/10 text-green px-1.5 py-0.5 rounded">已设赔率</span>
+          )}
+        </div>
+        <div className="flex items-center gap-1.5 ml-2 shrink-0">
+          {!isFinished && (
+            <button
+              onClick={() => openOddsModal(m)}
+              className="text-sm px-2 py-1 rounded bg-bg-elevated text-text-secondary hover:text-text-primary transition-colors"
+            >
+              {hasOdds ? "编辑赔率" : "设置赔率"}
+            </button>
+          )}
+          <button
+            onClick={() => {
+              setSettleMatchData(m);
+              setSettleForm({
+                homeScore: m.homeScore?.toString() ?? "",
+                awayScore: m.awayScore?.toString() ?? "",
+                halfHomeScore: m.halfHomeScore?.toString() ?? "",
+                halfAwayScore: m.halfAwayScore?.toString() ?? "",
+                finalHomeScore: m.finalHomeScore?.toString() ?? "",
+                finalAwayScore: m.finalAwayScore?.toString() ?? "",
+              });
+              setShowSettle(true);
+            }}
+            className="text-sm px-2 py-1 rounded bg-gold/10 text-gold hover:bg-gold/20 transition-colors"
+          >
+            {isFinished ? "修改结算" : "结算"}
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div className="max-w-7xl">
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px] items-start">
+    <div className="w-full">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_440px] items-start">
         <div className="min-w-0">
       <div className="flex items-center justify-between mb-4">
         <div>
@@ -474,7 +555,7 @@ export default function AdminTournamentsPage() {
           <button
             onClick={handleFetch500}
             disabled={fetch500Loading}
-            className="px-4 py-2 rounded-lg text-sm bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-colors disabled:opacity-40"
+            className="px-4 py-2 rounded-lg text-sm bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors disabled:opacity-40"
           >
             {fetch500Loading ? "抓取中..." : "更新世界杯赔率"}
           </button>
@@ -554,64 +635,30 @@ export default function AdminTournamentsPage() {
                     {tMatches.length === 0 ? (
                       <div className="text-text-muted text-sm py-2">暂无比赛</div>
                     ) : (
-                      <div className="space-y-2">
-                        {tMatches.map((m) => {
-                          const kickoff = new Date(m.kickoffTime);
-                          const timeStr = kickoff.toLocaleString("zh-CN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-                          const isFinished = m.status === "FINISHED";
-                          const hasOdds = Object.keys(m.odds.x1x).length > 0;
-                          return (
-                            <div key={m.id} className="bg-bg-primary rounded-lg px-3 py-2.5 flex items-center justify-between">
-                              <div className="flex items-center gap-2 flex-1 min-w-0">
-                                <span className="text-sm text-text-muted whitespace-nowrap">{timeStr}</span>
-                                <span className="text-sm font-medium truncate">{displayTeamName(m.homeTeam)} vs {displayTeamName(m.awayTeam)}</span>
-                                {m.status === "UPCOMING" && (
-                                  <span className="text-sm bg-accent/10 text-accent px-1.5 py-0.5 rounded">未开赛</span>
-                                )}
-                                {m.status === "FINISHED" && m.homeScore !== null && (
-                                  <span className="text-sm font-semibold">
-                                    {m.homeScore}:{m.awayScore}
-                                    {m.finalHomeScore !== null && m.finalAwayScore !== null &&
-                                      (m.finalHomeScore !== m.homeScore || m.finalAwayScore !== m.awayScore) && (
-                                      <span className="text-text-muted font-normal ml-1">({m.finalHomeScore}:{m.finalAwayScore})</span>
-                                    )}
-                                  </span>
-                                )}
-                                {hasOdds && (
-                                  <span className="text-sm bg-green/10 text-green px-1.5 py-0.5 rounded">已设赔率</span>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-1.5 ml-2 shrink-0">
-                                {!isFinished && (
-                                  <button
-                                    onClick={() => openOddsModal(m)}
-                                    className="text-sm px-2 py-1 rounded bg-bg-elevated text-text-secondary hover:text-text-primary transition-colors"
-                                  >
-                                    {hasOdds ? "编辑赔率" : "设置赔率"}
-                                  </button>
-                                )}
+                      (() => {
+                        const past = tMatches.filter((m) => isMatchPast(m.kickoffTime));
+                        const current = tMatches.filter((m) => !isMatchPast(m.kickoffTime));
+                        const isPastExpanded = expandedPast.has(t.id);
+                        return (
+                          <div className="space-y-2">
+                            {past.length > 0 && (
+                              <div className="space-y-2">
                                 <button
-                                  onClick={() => {
-                                    setSettleMatchData(m);
-                                    setSettleForm({
-                                      homeScore: m.homeScore?.toString() ?? "",
-                                      awayScore: m.awayScore?.toString() ?? "",
-                                      halfHomeScore: m.halfHomeScore?.toString() ?? "",
-                                      halfAwayScore: m.halfAwayScore?.toString() ?? "",
-                                      finalHomeScore: m.finalHomeScore?.toString() ?? "",
-                                      finalAwayScore: m.finalAwayScore?.toString() ?? "",
-                                    });
-                                    setShowSettle(true);
-                                  }}
-                                  className="text-sm px-2 py-1 rounded bg-gold/10 text-gold hover:bg-gold/20 transition-colors"
+                                  onClick={() => togglePast(t.id)}
+                                  className="w-full flex items-center justify-between text-left text-sm text-text-secondary hover:text-text-primary transition-colors py-2 px-3 rounded-lg bg-bg-elevated/50"
                                 >
-                                  {isFinished ? "修改结算" : "结算"}
+                                  <span>历史比赛 · {past.length} 场</span>
+                                  <span className="text-text-muted">{isPastExpanded ? "收起 ↑" : "展开 ↓"}</span>
                                 </button>
+                                {isPastExpanded && past.map(renderMatchRow)}
                               </div>
-                            </div>
-                          );
-                        })}
-                      </div>
+                            )}
+                            {current.length > 0
+                              ? current.map(renderMatchRow)
+                              : <div className="text-text-muted text-sm py-2">今日及之后暂无比赛</div>}
+                          </div>
+                        );
+                      })()
                     )}
                   </div>
                 )}
@@ -999,6 +1046,7 @@ function ScheduledPullLogPanel({ logs, loading, onRefresh }: { logs: PullLog[]; 
       <div className="flex items-center justify-between mb-3">
         <div>
           <h3 className="font-display text-base font-semibold">定时拉取日志</h3>
+          <p className="text-text-muted text-xs mt-0.5">定时拉取时间 03:00 · 06:00 · 09:00 · 12:00 · 15:00（北京时间）</p>
           <p className="text-text-muted text-xs mt-0.5">自动更新记录，赔率不展示具体数值</p>
         </div>
         <button onClick={onRefresh} disabled={loading} className="text-xs px-2.5 py-1 rounded-lg bg-bg-elevated text-text-secondary hover:text-text-primary transition-colors disabled:opacity-40">
