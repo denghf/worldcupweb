@@ -1,11 +1,19 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { displayTeamName } from "@/lib/team-display";
+import {
+  HANDICAP_LABELS,
+  MARKET_NAMES,
+  X1X_LABELS,
+  formatOptionLabel,
+  type BetMarket,
+} from "@/lib/bet-display";
 
 interface Match {
   id: number;
+  matchNo?: string | null;
   homeTeam: string;
   awayTeam: string;
   homeTeamLogo: string | null;
@@ -28,11 +36,35 @@ interface Match {
   };
 }
 
+type ParlayItem = {
+  matchId: number;
+  homeTeam: string;
+  awayTeam: string;
+  betMarket: BetMarket;
+  selectedOption: string;
+  odds: number;
+};
+
+type OddsOption = {
+  market: BetMarket;
+  optionKey: string;
+  label: string;
+  odds: number;
+};
+
 const beijingTimeFormatter = new Intl.DateTimeFormat("zh-CN", {
   timeZone: "Asia/Shanghai",
   hour: "2-digit",
   minute: "2-digit",
   hour12: false,
+});
+
+const beijingDateFormatter = new Intl.DateTimeFormat("zh-CN", {
+  timeZone: "Asia/Shanghai",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  weekday: "short",
 });
 
 const STATUS_LABELS: Record<string, string> = {
@@ -187,20 +219,29 @@ export default function MatchDetailPage() {
   const router = useRouter();
   const matchId = Number(params.id);
 
+  const [matches, setMatches] = useState<Match[]>([]);
   const [match, setMatch] = useState<Match | null>(null);
   const [loading, setLoading] = useState(true);
+  const [bettableNow, setBettableNow] = useState<number | null>(null);
   const [selectedOdds, setSelectedOdds] = useState<Set<string>>(() => new Set());
   const [loggedIn, setLoggedIn] = useState(false);
   const [betAmounts, setBetAmounts] = useState<Record<string, string>>({});
   const [betSubmitting, setBetSubmitting] = useState(false);
+  const [viewMode, setViewMode] = useState<"single" | "parlay">("single");
+  const [parlayItems, setParlayItems] = useState<ParlayItem[]>([]);
+  const [parlayAmount, setParlayAmount] = useState(DEFAULT_BET_AMOUNT);
+  const [activeMoreMatchId, setActiveMoreMatchId] = useState<number | null>(null);
+  const [parlaySubmitting, setParlaySubmitting] = useState(false);
 
   useEffect(() => {
     fetch("/api/matches")
       .then((r) => r.json())
       .then((res) => {
         if (res.success) {
-          const found = (res.data || []).find((m: Match) => m.id === matchId);
-          setMatch(found || null);
+          const rows = (res.data || []) as Match[];
+          setBettableNow(Date.now());
+          setMatches(rows);
+          setMatch(rows.find((m) => m.id === matchId) || null);
         }
         setLoading(false);
       })
@@ -215,6 +256,81 @@ export default function MatchDetailPage() {
       .then((res) => setLoggedIn(Boolean(res.success && res.data.loggedIn)))
       .catch(() => setLoggedIn(false));
   }, []);
+
+  const currentMatchDateKey = getBeijingDateKey(match?.kickoffTime);
+  const bettableMatches = useMemo(() => {
+    const now = bettableNow ?? 0;
+    return matches
+      .filter((m) => (
+        m.status === "UPCOMING" &&
+        new Date(m.kickoffTime).getTime() > now &&
+        getBeijingDateKey(m.kickoffTime) === currentMatchDateKey
+      ))
+      .sort((a, b) => new Date(a.kickoffTime).getTime() - new Date(b.kickoffTime).getTime());
+  }, [matches, bettableNow, currentMatchDateKey]);
+
+  const activeMoreMatch = activeMoreMatchId ? bettableMatches.find((m) => m.id === activeMoreMatchId) || null : null;
+  const parlayTotalOdds = parlayItems.length > 0 ? parlayItems.reduce((acc, item) => acc * item.odds, 1) : 0;
+  const parlayRoundedOdds = Math.round(parlayTotalOdds * 100) / 100;
+  const parlayStake = Number(parlayAmount);
+  const parlayPayout = Number.isFinite(parlayStake) && parlayStake > 0 && parlayItems.length > 0
+    ? Math.round(parlayStake * parlayRoundedOdds * 100) / 100
+    : 0;
+
+  const toggleParlayItem = (item: ParlayItem) => {
+    setParlayItems((current) => {
+      const existing = current.find((p) => p.matchId === item.matchId);
+      if (existing && existing.betMarket === item.betMarket && existing.selectedOption === item.selectedOption) {
+        return current.filter((p) => p.matchId !== item.matchId);
+      }
+      return [...current.filter((p) => p.matchId !== item.matchId), item];
+    });
+  };
+
+  const stepParlayAmount = (direction: -1 | 1) => {
+    setParlayAmount((current) => {
+      const amount = Number(current || DEFAULT_BET_AMOUNT);
+      const next = Math.max(BET_AMOUNT_STEP, (Number.isFinite(amount) ? amount : BET_AMOUNT_STEP) + direction * BET_AMOUNT_STEP);
+      return String(next);
+    });
+  };
+
+  const submitParlayBet = async () => {
+    const token = localStorage.getItem("player_token");
+    if (!loggedIn || !token) return router.push("/profile/login");
+    if (parlayItems.length < 2) return alert("串关至少选择 2 场比赛");
+    if (!Number.isFinite(parlayStake) || parlayStake <= 0) return alert("请输入有效投注金额");
+    if (!confirm(`确认串关 ${parlayItems.length} 场，共 ${parlayStake.toFixed(1)} 记分？预计赔付 ${parlayPayout.toFixed(1)}`)) return;
+
+    setParlaySubmitting(true);
+    try {
+      const res = await fetch("/api/bets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          betMode: "PARLAY",
+          items: parlayItems.map((item) => ({
+            matchId: item.matchId,
+            betMarket: item.betMarket,
+            selectedOption: item.selectedOption,
+          })),
+          totalAmount: parlayStake,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert("串关投注成功！");
+        setParlayItems([]);
+        router.push("/profile");
+      } else {
+        alert(data.error || "串关投注失败");
+      }
+    } catch {
+      alert("网络错误");
+    } finally {
+      setParlaySubmitting(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -332,9 +448,102 @@ export default function MatchDetailPage() {
     });
   };
 
+  if (viewMode === "parlay") {
+    const dateLabel = formatBeijingDateLabel(bettableMatches[0]?.kickoffTime || match.kickoffTime);
+
+    return (
+      <div className="bg-pattern min-h-[100dvh] px-3 pb-28 pt-3">
+        <div className="mb-3 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setViewMode("single")}
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-white text-text-secondary transition-colors hover:border-accent hover:text-accent"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+              <path d="M19 12H5" />
+              <path d="m12 19-7-7 7-7" />
+            </svg>
+          </button>
+          <div className="min-w-0 flex-1">
+            <div className="text-[10px] font-semibold text-accent">PARLAY BET</div>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <h1 className="text-base font-black text-text-primary">串关下注</h1>
+              <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${parlayItems.length > 0 ? "bg-accent text-white" : "bg-bg-surface text-text-muted"}`}>
+                已选 {parlayItems.length}
+              </span>
+            </div>
+          </div>
+          {parlayItems.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setParlayItems([])}
+              className="h-8 rounded-full border border-border bg-white px-2.5 text-[11px] font-semibold text-text-secondary transition-colors hover:border-accent hover:text-accent"
+            >
+              清空
+            </button>
+          )}
+        </div>
+
+        <section className="mb-3 rounded-[10px] bg-white p-3 shadow-[0_4px_18px_rgba(31,37,48,0.06)] ring-1 ring-border">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-[10px] font-semibold text-accent">{dateLabel}</div>
+              <div className="mt-0.5 text-sm font-black text-text-primary">可串关比赛</div>
+            </div>
+            <div className="rounded-full bg-bg-surface px-3 py-1 text-[11px] font-bold text-text-secondary">
+              {bettableMatches.length} 场比赛
+            </div>
+          </div>
+          <div className="mt-2 text-[11px] leading-relaxed text-text-muted">默认展示胜平负和让球胜平负，点击其它查看该场全部赔率。</div>
+        </section>
+
+        {bettableMatches.length === 0 ? (
+          <div className="rounded-2xl bg-white px-4 py-10 text-center text-sm font-semibold text-text-muted shadow-sm ring-1 ring-border">
+            暂无可串关比赛
+          </div>
+        ) : (
+          <div className="space-y-2.5">
+            {bettableMatches.map((item) => (
+              <ParlayMatchCard
+                key={item.id}
+                match={item}
+                selectedItem={parlayItems.find((p) => p.matchId === item.id)}
+                onToggle={toggleParlayItem}
+                onMore={() => setActiveMoreMatchId(item.id)}
+              />
+            ))}
+          </div>
+        )}
+
+        <ParlayBottomBar
+          amount={parlayAmount}
+          itemCount={parlayItems.length}
+          totalOdds={parlayRoundedOdds}
+          payout={parlayPayout}
+          submitting={parlaySubmitting}
+          onAmountChange={setParlayAmount}
+          onStepAmount={stepParlayAmount}
+          onClear={() => setParlayItems([])}
+          onSubmit={submitParlayBet}
+        />
+
+        {activeMoreMatch && (
+          <ParlayOddsSheet
+            match={activeMoreMatch}
+            selectedItem={parlayItems.find((p) => p.matchId === activeMoreMatch.id)}
+            onClose={() => setActiveMoreMatchId(null)}
+            onSelect={(item) => {
+              toggleParlayItem(item);
+              setActiveMoreMatchId(null);
+            }}
+          />
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="bg-pattern px-3 pb-4 pt-3">
-      {/* Header */}
       <div className="mb-3 flex items-center gap-2">
         <button
           type="button"
@@ -346,7 +555,7 @@ export default function MatchDetailPage() {
             <path d="m12 19-7-7 7-7" />
           </svg>
         </button>
-        <div>
+        <div className="min-w-0 flex-1">
           <div className="text-[10px] font-semibold text-accent">ODDS DETAIL</div>
           <div className="flex flex-wrap items-center gap-1.5">
             <h1 className="text-base font-black text-text-primary">赔率详情</h1>
@@ -367,18 +576,28 @@ export default function MatchDetailPage() {
             )}
           </div>
         </div>
-        {canSelect && selectedOdds.size > 0 && (
-          <button
-            type="button"
-            onClick={() => { setSelectedOdds(new Set()); setBetAmounts({}); }}
-            className="ml-auto h-8 rounded-full border border-border bg-white px-2.5 text-[11px] font-semibold text-text-secondary transition-colors hover:border-accent hover:text-accent"
-          >
-            清空
-          </button>
-        )}
+        <div className="ml-auto flex shrink-0 items-center gap-2">
+          {bettableMatches.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setViewMode("parlay")}
+              className="h-8 rounded-full bg-accent px-3 text-[11px] font-black text-white shadow-[0_8px_18px_rgba(230,0,18,0.18)] transition-transform active:scale-[0.98]"
+            >
+              串关
+            </button>
+          )}
+          {canSelect && selectedOdds.size > 0 && (
+            <button
+              type="button"
+              onClick={() => { setSelectedOdds(new Set()); setBetAmounts({}); }}
+              className="h-8 rounded-full border border-border bg-white px-2.5 text-[11px] font-semibold text-text-secondary transition-colors hover:border-accent hover:text-accent"
+            >
+              清空
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Match info */}
       <section className="mb-3 overflow-hidden rounded-[10px] bg-white p-3 shadow-[0_4px_18px_rgba(31,37,48,0.06)] ring-1 ring-border">
         <div className="mb-2 flex items-center justify-between text-[10px] font-semibold text-text-muted">
           <span>{match.tournamentName}</span>
@@ -466,7 +685,6 @@ export default function MatchDetailPage() {
         </section>
       )}
 
-      {/* Odds grids */}
       <div className="space-y-1.5">
         <MarketGrid title="胜平负" columns="grid-cols-3">
           <ExpandedOddsCell label="胜" value={x1x.home} dense
@@ -601,7 +819,7 @@ function ExpandedOddsCell({
   );
 }
 
-function MarketGrid({ title, columns, children }: { title: string; columns: string; children: React.ReactNode }) {
+function MarketGrid({ title, columns, children }: { title: string; columns: string; children: ReactNode }) {
   return (
     <section className="overflow-hidden rounded-[6px] bg-white shadow-[0_1px_3px_rgba(31,37,48,0.04)] ring-1 ring-border/70">
       <div className="flex h-7 items-center gap-1.5 border-b border-border/70 bg-white px-2">
@@ -613,25 +831,391 @@ function MarketGrid({ title, columns, children }: { title: string; columns: stri
   );
 }
 
+function ParlayMatchCard({
+  match,
+  selectedItem,
+  onToggle,
+  onMore,
+}: {
+  match: Match;
+  selectedItem?: ParlayItem;
+  onToggle: (item: ParlayItem) => void;
+  onMore: () => void;
+}) {
+  const time = beijingTimeFormatter.format(new Date(match.kickoffTime));
+  const x1xOptions = getX1xOptions(match);
+  const handicapOptions = getHandicapOptions(match);
+
+  return (
+    <section className="overflow-hidden rounded-[10px] bg-white shadow-[0_4px_18px_rgba(31,37,48,0.06)] ring-1 ring-border">
+      <div className="flex items-center justify-between gap-3 border-b border-border/70 px-2.5 py-2">
+        <div className="min-w-0">
+          <div className="text-[10px] font-black text-text-primary">{match.matchNo || `#${match.id}`}</div>
+          <div className="truncate text-[10px] font-semibold text-text-muted">{match.tournamentName}</div>
+        </div>
+        <button
+          type="button"
+          onClick={onMore}
+          className="rounded-full border border-border bg-bg-surface px-3 py-1 text-[11px] font-black text-accent transition-colors hover:border-accent hover:bg-accent hover:text-white"
+        >
+          其它
+        </button>
+      </div>
+      <div className="p-2.5">
+        <div className="grid grid-cols-[1fr_58px_1fr] items-center gap-2">
+          <MiniTeam align="left" name={match.homeTeam} logo={match.homeTeamLogo} />
+          <div className="text-center">
+            <div className="rounded-full border border-border bg-bg-surface px-2 py-1 text-[10px] font-black text-text-secondary">{time}</div>
+            <div className="mt-0.5 text-[9px] font-semibold text-text-muted">VS</div>
+          </div>
+          <MiniTeam align="right" name={match.awayTeam} logo={match.awayTeamLogo} />
+        </div>
+
+        <div className="mt-2 space-y-1.5">
+          {x1xOptions.length > 0 && (
+            <ParlayMarketRow
+              title="胜平负"
+              options={x1xOptions}
+              match={match}
+              selectedItem={selectedItem}
+              onToggle={onToggle}
+            />
+          )}
+          {handicapOptions.length > 0 && (
+            <ParlayMarketRow
+              title="让球胜平负"
+              options={handicapOptions}
+              match={match}
+              selectedItem={selectedItem}
+              onToggle={onToggle}
+            />
+          )}
+        </div>
+
+        {selectedItem && (
+          <div className="mt-2 flex items-center justify-between gap-2 rounded-lg bg-accent/8 px-2.5 py-1.5 text-[11px]">
+            <span className="min-w-0 truncate font-bold text-text-primary">
+              已选 {MARKET_NAMES[selectedItem.betMarket]} · {formatOptionLabel(selectedItem.betMarket, selectedItem.selectedOption)}
+            </span>
+            <span className="num shrink-0 font-black text-accent">@{selectedItem.odds.toFixed(2)}</span>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function MiniTeam({ align, name, logo }: { align: "left" | "right"; name: string; logo: string | null }) {
+  const displayName = displayTeamName(name);
+  const mark = logo || TEAM_MARKS[displayName] || TEAM_MARKS[name] || "🏳️";
+
+  return (
+    <div className={`flex min-w-0 items-center gap-1.5 ${align === "right" ? "justify-end text-right" : ""}`}>
+      {align === "left" && <span className="flag-badge h-7 w-7 shrink-0 text-base">{mark}</span>}
+      <span className="truncate text-xs font-black text-text-primary">{displayName}</span>
+      {align === "right" && <span className="flag-badge h-7 w-7 shrink-0 text-base">{mark}</span>}
+    </div>
+  );
+}
+
+function ParlayMarketRow({
+  title,
+  options,
+  match,
+  selectedItem,
+  onToggle,
+}: {
+  title: string;
+  options: OddsOption[];
+  match: Match;
+  selectedItem?: ParlayItem;
+  onToggle: (item: ParlayItem) => void;
+}) {
+  return (
+    <div className="grid grid-cols-[68px_1fr] overflow-hidden rounded-[6px] bg-white ring-1 ring-border/70">
+      <div className="flex items-center justify-center border-r border-border/70 bg-bg-surface px-1 text-center text-[10px] font-black text-text-secondary">
+        {title}
+      </div>
+      <div className="grid grid-cols-3 -mr-px -mb-px">
+        {options.map((option) => (
+          <ParlayOddsButton
+            key={`${option.market}:${option.optionKey}`}
+            option={option}
+            selected={selectedItem?.betMarket === option.market && selectedItem.selectedOption === option.optionKey}
+            onClick={() => onToggle(toParlayItem(match, option))}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ParlayOddsButton({ option, selected, onClick }: { option: OddsOption; selected: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`expanded-odds-cell flex min-h-9 flex-col items-center justify-center border-r border-b px-1 py-1 text-center transition-all active:scale-[0.98] ${selected ? "selected border-accent" : "border-border/70"}`}
+      aria-pressed={selected}
+    >
+      <span className={`truncate text-[10px] font-semibold leading-none ${selected ? "text-white" : "text-text-primary"}`}>{option.label}</span>
+      <span className={`num mt-0.5 text-[10px] leading-none ${selected ? "text-white/90" : "text-text-secondary"}`}>{option.odds.toFixed(2)}</span>
+    </button>
+  );
+}
+
+function ParlayBottomBar({
+  amount,
+  itemCount,
+  totalOdds,
+  payout,
+  submitting,
+  onAmountChange,
+  onStepAmount,
+  onClear,
+  onSubmit,
+}: {
+  amount: string;
+  itemCount: number;
+  totalOdds: number;
+  payout: number;
+  submitting: boolean;
+  onAmountChange: (value: string) => void;
+  onStepAmount: (direction: -1 | 1) => void;
+  onClear: () => void;
+  onSubmit: () => void;
+}) {
+  return (
+    <div className="fixed inset-x-0 bottom-0 z-30 px-3 pb-3 pointer-events-none">
+      <div className="mx-auto max-w-md md:max-w-3xl pointer-events-auto rounded-2xl bg-white p-3 shadow-[0_-12px_32px_rgba(31,37,48,0.16)] ring-1 ring-border">
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={onClear}
+            disabled={itemCount === 0}
+            className="rounded-full border border-border px-2.5 py-1 text-[11px] font-bold text-text-secondary disabled:opacity-40"
+          >
+            清空
+          </button>
+          <div className="min-w-0 text-right text-[11px] font-bold text-text-muted">
+            <span className="text-text-primary">{itemCount} 场</span>
+            <span className="mx-1">·</span>
+            <span className="num text-accent">@{totalOdds > 0 ? totalOdds.toFixed(2) : "0.00"}</span>
+            <span className="mx-1">·</span>
+            <span>预计 </span>
+            <span className="num text-accent">{payout.toFixed(1)}</span>
+          </div>
+        </div>
+        <div className="grid grid-cols-[auto_1fr] gap-2">
+          <div className="flex items-center rounded-xl border border-border bg-bg-surface">
+            <button
+              type="button"
+              onClick={() => onStepAmount(-1)}
+              className="flex h-10 w-9 items-center justify-center rounded-l-xl text-base font-black text-text-secondary transition-colors hover:bg-accent hover:text-white"
+              aria-label="减少金额"
+            >
+              -
+            </button>
+            <input
+              value={amount}
+              onChange={(e) => onAmountChange(e.target.value)}
+              inputMode="decimal"
+              className="num h-10 w-14 border-x border-border bg-white text-center text-sm font-black text-text-primary outline-none"
+            />
+            <button
+              type="button"
+              onClick={() => onStepAmount(1)}
+              className="flex h-10 w-9 items-center justify-center rounded-r-xl text-base font-black text-text-secondary transition-colors hover:bg-accent hover:text-white"
+              aria-label="增加金额"
+            >
+              +
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={onSubmit}
+            disabled={submitting}
+            className="btn-primary rounded-xl text-sm disabled:opacity-40"
+          >
+            {submitting ? "提交中..." : "确认串关"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ParlayOddsSheet({
+  match,
+  selectedItem,
+  onClose,
+  onSelect,
+}: {
+  match: Match;
+  selectedItem?: ParlayItem;
+  onClose: () => void;
+  onSelect: (item: ParlayItem) => void;
+}) {
+  const sections = getAllMarketSections(match);
+
+  return (
+    <>
+      <button
+        type="button"
+        aria-label="关闭全部赔率"
+        className="fixed inset-0 z-40 bg-black/45 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <section className="fixed inset-x-0 bottom-0 z-50 mx-auto max-h-[82dvh] max-w-md overflow-hidden rounded-t-[22px] bg-white shadow-2xl md:max-w-3xl">
+        <div className="flex items-start justify-between gap-3 border-b border-border px-4 py-3">
+          <div className="min-w-0">
+            <h2 className="truncate text-base font-black text-text-primary">
+              {displayTeamName(match.homeTeam)} vs {displayTeamName(match.awayTeam)}
+            </h2>
+            <div className="mt-0.5 text-[11px] font-semibold text-text-muted">
+              {match.matchNo || `#${match.id}`} · {match.tournamentName} · {beijingTimeFormatter.format(new Date(match.kickoffTime))}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-bg-surface text-sm font-black text-text-secondary"
+          >
+            ×
+          </button>
+        </div>
+        <div className="max-h-[calc(82dvh-70px)] overflow-y-auto px-3 py-3">
+          <div className="space-y-2.5">
+            {sections.map((section) => (
+              <section key={section.market} className="overflow-hidden rounded-[8px] bg-white ring-1 ring-border/70">
+                <div className="flex h-8 items-center justify-between border-b border-border/70 bg-bg-surface px-2.5">
+                  <h3 className="text-[11px] font-black text-text-primary">{section.title}</h3>
+                  <span className="text-[10px] font-semibold text-text-muted">{section.options.length} 项</span>
+                </div>
+                <div className={`grid ${section.columns} -mr-px -mb-px`}>
+                  {section.options.map((option) => {
+                    const selected = selectedItem?.betMarket === option.market && selectedItem.selectedOption === option.optionKey;
+                    return (
+                      <ParlayOddsButton
+                        key={`${option.market}:${option.optionKey}`}
+                        option={option}
+                        selected={selected}
+                        onClick={() => onSelect(toParlayItem(match, option))}
+                      />
+                    );
+                  })}
+                </div>
+              </section>
+            ))}
+          </div>
+        </div>
+      </section>
+    </>
+  );
+}
+
 function formatHandicapLabel(key: string) {
-  const labels: Record<string, string> = { home: "让胜", draw: "让平", away: "让负" };
   const [handicap, option] = key.includes(":") ? key.split(":") : ["", key];
-  return `${handicap}${labels[option] || option}`;
+  return `${handicap}${HANDICAP_LABELS[option] || option}`;
 }
 
 function formatMarketName(betType: string) {
-  const names: Record<string, string> = {
-    X1X: "胜平负",
-    HANDICAP_X1X: "让球胜平负",
-    CORRECT_SCORE: "猜比分",
-    TOTAL_GOALS: "总进球",
-    HALF_FULL: "半全场",
-  };
-  return names[betType] || betType;
+  return MARKET_NAMES[betType] || betType;
 }
 
 function formatBetOption(betType: string, optionKey: string) {
-  if (betType === "X1X") return ({ home: "胜", draw: "平", away: "负" } as Record<string, string>)[optionKey] || optionKey;
-  if (betType === "HANDICAP_X1X") return formatHandicapLabel(optionKey);
-  return optionKey;
+  return formatOptionLabel(betType, optionKey);
+}
+
+function getX1xOptions(match: Match): OddsOption[] {
+  return (["home", "draw", "away"] as const).reduce<OddsOption[]>((options, key) => {
+    const odds = match.odds?.x1x?.[key];
+    if (odds) options.push({ market: "X1X", optionKey: key, label: X1X_LABELS[key], odds });
+    return options;
+  }, []);
+}
+
+function getHandicapOptions(match: Match): OddsOption[] {
+  return Object.entries(match.odds?.handicapX1x || {}).map(([optionKey, odds]) => ({
+    market: "HANDICAP_X1X" as const,
+    optionKey,
+    label: formatHandicapLabel(optionKey),
+    odds,
+  }));
+}
+
+function getAllMarketSections(match: Match) {
+  const sections = [
+    {
+      market: "X1X" as const,
+      title: MARKET_NAMES.X1X,
+      columns: "grid-cols-3",
+      options: getX1xOptions(match),
+    },
+    {
+      market: "HANDICAP_X1X" as const,
+      title: MARKET_NAMES.HANDICAP_X1X,
+      columns: "grid-cols-3",
+      options: getHandicapOptions(match),
+    },
+    {
+      market: "CORRECT_SCORE" as const,
+      title: MARKET_NAMES.CORRECT_SCORE,
+      columns: "grid-cols-4 md:grid-cols-6",
+      options: (match.odds?.correctScore || []).map((option) => ({
+        market: "CORRECT_SCORE" as const,
+        optionKey: option.label,
+        label: option.label,
+        odds: option.value,
+      })),
+    },
+    {
+      market: "TOTAL_GOALS" as const,
+      title: MARKET_NAMES.TOTAL_GOALS,
+      columns: "grid-cols-4 md:grid-cols-8",
+      options: (match.odds?.totalGoals || []).map((option) => ({
+        market: "TOTAL_GOALS" as const,
+        optionKey: option.label,
+        label: option.label,
+        odds: option.value,
+      })),
+    },
+    {
+      market: "HALF_FULL" as const,
+      title: MARKET_NAMES.HALF_FULL,
+      columns: "grid-cols-3",
+      options: (match.odds?.halfFull || []).map((option) => ({
+        market: "HALF_FULL" as const,
+        optionKey: option.label,
+        label: option.label,
+        odds: option.value,
+      })),
+    },
+  ];
+
+  return sections.filter((section) => section.options.length > 0);
+}
+
+function toParlayItem(match: Match, option: OddsOption): ParlayItem {
+  return {
+    matchId: match.id,
+    homeTeam: match.homeTeam,
+    awayTeam: match.awayTeam,
+    betMarket: option.market,
+    selectedOption: option.optionKey,
+    odds: option.odds,
+  };
+}
+
+function getBeijingDateKey(value?: string | null) {
+  if (!value) return "";
+  const parts = beijingDateFormatter.formatToParts(new Date(value));
+  const byType = Object.fromEntries(parts.map((part) => [part.type, part.value])) as Record<string, string>;
+  return `${byType.year}-${byType.month}-${byType.day}`;
+}
+
+function formatBeijingDateLabel(value: string) {
+  const parts = beijingDateFormatter.formatToParts(new Date(value));
+  const byType = Object.fromEntries(parts.map((part) => [part.type, part.value])) as Record<string, string>;
+  return `${byType.year}-${byType.month}-${byType.day} ${byType.weekday}`;
 }

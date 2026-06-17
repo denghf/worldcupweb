@@ -57,7 +57,105 @@ export async function POST(req: NextRequest) {
     if (!currentUser || currentUser.status !== "ACTIVE") return apiError("账号不可用");
     if (currentUser.mustChangePwd) return apiError("请先修改初始密码");
 
-    const { matchId, selections } = await req.json();
+    const body = await req.json();
+
+    if (body.betMode === "PARLAY") {
+      const items = body.items as { matchId: number | string; betMarket: string; selectedOption: string }[];
+      const totalAmount = Math.round(Number(body.totalAmount) * 100) / 100;
+      if (!Array.isArray(items) || items.length < 2) return apiError("串关至少选择 2 场比赛");
+      if (!Number.isFinite(totalAmount) || totalAmount <= 0) return apiError("投注金额无效");
+
+      const normalizedItems = items.map((item) => ({
+        matchId: Number(item.matchId),
+        betMarket: item.betMarket as BetType,
+        selectedOption: item.selectedOption,
+      }));
+      if (normalizedItems.some((item) => !Number.isInteger(item.matchId) || !Object.values(BetType).includes(item.betMarket) || !item.selectedOption)) {
+        return apiError("串关投注项无效");
+      }
+      if (new Set(normalizedItems.map((item) => item.matchId)).size !== normalizedItems.length) {
+        return apiError("同一场比赛只能选择一个串关选项");
+      }
+
+      const matches = await prisma.match.findMany({
+        where: { id: { in: normalizedItems.map((item) => item.matchId) } },
+        select: { id: true, status: true, kickoffTime: true },
+      });
+      if (matches.length !== normalizedItems.length) return apiError("部分比赛不存在");
+      const now = Date.now();
+      if (matches.some((match) => match.status !== "UPCOMING" || match.kickoffTime.getTime() <= now)) {
+        return apiError("所选比赛已不可投注，请重新选择");
+      }
+
+      const odds = await prisma.odds.findMany({
+        where: {
+          OR: normalizedItems.map((item) => ({
+            matchId: item.matchId,
+            betType: item.betMarket,
+            optionKey: item.selectedOption,
+          })),
+        },
+      });
+      if (odds.length !== normalizedItems.length) return apiError("投注项赔率已变化，请刷新后重试");
+
+      const oddsMap = new Map(odds.map((odd) => [`${odd.matchId}:${odd.betType}:${odd.optionKey}`, odd]));
+      const lockedTotalOdds = Math.round(
+        normalizedItems.reduce((acc, item) => {
+          const odd = oddsMap.get(`${item.matchId}:${item.betMarket}:${item.selectedOption}`);
+          return acc * Number(odd?.oddsValue ?? 0);
+        }, 1) * 100
+      ) / 100;
+      if (!Number.isFinite(lockedTotalOdds) || lockedTotalOdds <= 0) return apiError("投注项赔率已变化，请刷新后重试");
+      const potentialPayout = Math.round(totalAmount * lockedTotalOdds * 100) / 100;
+
+      const bet = await prisma.$transaction(async (tx) => {
+        const wallet = await tx.wallet.findUnique({ where: { userId: player.userId } });
+        const balance = Number(wallet?.balance ?? 0);
+        if (balance < totalAmount) throw new Error("余额不足，无法投注");
+        const balanceAfter = Math.round((balance - totalAmount) * 100) / 100;
+
+        const createdBet = await tx.bet.create({
+          data: {
+            betUid: crypto.randomUUID(),
+            userId: player.userId!,
+            betMode: "PARLAY",
+            totalAmount,
+            status: "APPROVED",
+            lockedTotalOdds,
+            potentialPayout,
+            items: {
+              create: normalizedItems.map((item) => {
+                const odd = oddsMap.get(`${item.matchId}:${item.betMarket}:${item.selectedOption}`);
+                if (!odd) throw new Error("投注项赔率已变化，请刷新后重试");
+                return {
+                  matchId: item.matchId,
+                  betMarket: odd.betType,
+                  selectedOption: odd.optionKey,
+                  lockedOdds: odd.oddsValue,
+                };
+              }),
+            },
+          },
+        });
+
+        await tx.transaction.create({
+          data: {
+            userId: player.userId!,
+            type: "BET",
+            amount: -totalAmount,
+            balanceAfter,
+            relatedBetId: createdBet.id,
+            remark: "玩家串关投注",
+          },
+        });
+        await tx.wallet.update({ where: { userId: player.userId }, data: { balance: balanceAfter } });
+        return createdBet;
+      });
+
+      return apiSuccess({ created: 1, betMode: "PARLAY", betId: bet.id }, 201);
+    }
+
+    const { matchId, selections } = body;
     if (!Number.isInteger(Number(matchId))) return apiError("比赛无效");
     if (!Array.isArray(selections) || selections.length === 0) return apiError("请选择投注项");
 
