@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { displayTeamName } from "@/lib/team-display";
 import {
   MARKET_NAMES,
@@ -11,6 +11,7 @@ import {
   isWinningOption,
   type BetMarket,
 } from "@/lib/bet-display";
+import { AdminMobileTopBar } from "@/components/admin/mobile-nav";
 
 interface MatchListItem {
   id: number;
@@ -80,11 +81,30 @@ interface MatchDetail {
 export default function ResultsPage() {
   const [matches, setMatches] = useState<MatchListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [mobileViewingDetail, setMobileViewingDetail] = useState(false);
   const [detail, setDetail] = useState<MatchDetail | null>(null);
 
   const [dateFilter, setDateFilter] = useState("");
   const [teamFilter, setTeamFilter] = useState("");
+
+  const loadMatches = useCallback(async () => {
+    try {
+      const r = await fetch("/api/admin/results");
+      const data = await r.json();
+      if (data.success) {
+        const rows = data.data || [];
+        setMatches(rows);
+        setSelectedId((current) => current ?? rows[0]?.id ?? null);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
 
   useEffect(() => {
     fetch("/api/admin/results")
@@ -99,6 +119,11 @@ export default function ResultsPage() {
       })
       .catch(() => setLoading(false));
   }, []);
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    loadMatches();
+  };
 
   useEffect(() => {
     if (selectedId == null) return;
@@ -127,11 +152,41 @@ export default function ResultsPage() {
   }, [matches, dateFilter, teamFilter]);
 
   return (
-    <div>
-      <h2 className="font-display text-lg font-semibold mb-1">赛果查看</h2>
-      <p className="text-text-muted text-sm mb-4">按场查看赛果、玩法命中与下注中奖情况</p>
+    <div className="w-full">
+      <AdminMobileTopBar
+        title="赛果查看"
+        right={
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            aria-label="刷新"
+            className="p-2 -my-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-bg-elevated transition-colors disabled:opacity-50"
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className={refreshing ? "animate-spin" : ""}
+            >
+              <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+              <path d="M21 3v6h-6" />
+            </svg>
+          </button>
+        }
+      />
 
-      <div className="flex flex-wrap items-center gap-3 mb-4">
+      <div className="hidden lg:block mb-1">
+        <h2 className="font-display text-lg font-semibold">赛果查看</h2>
+        <p className="text-text-muted text-sm">按场查看赛果、玩法命中与下注中奖情况</p>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3 mb-4 mt-3 lg:mt-4">
         <input
           type="date"
           value={dateFilter}
@@ -160,16 +215,23 @@ export default function ResultsPage() {
       ) : filteredMatches.length === 0 ? (
         <div className="text-text-muted text-sm py-8 text-center">暂无赛果，可调整筛选条件</div>
       ) : (
-        <div className="flex gap-4 items-start">
+        <div className="lg:grid lg:grid-cols-[280px_1fr] gap-4 items-start">
           {/* Left: match list */}
-          <div className="w-72 shrink-0 space-y-2 max-h-[70vh] overflow-y-auto pr-1">
+          <div
+            className={`space-y-2 lg:max-h-[70vh] lg:overflow-y-auto lg:pr-1 ${
+              mobileViewingDetail ? "hidden lg:block" : "block"
+            }`}
+          >
             {filteredMatches.map((m) => {
               const active = m.id === selectedId;
               const resultStatus = getResultStatus(m);
               return (
                 <button
                   key={m.id}
-                  onClick={() => setSelectedId(m.id)}
+                  onClick={() => {
+                    setSelectedId(m.id);
+                    setMobileViewingDetail(true);
+                  }}
                   className={`w-full text-left rounded-xl p-3 transition-all border ${
                     active
                       ? "bg-accent/10 border-accent ring-1 ring-accent/30"
@@ -201,7 +263,22 @@ export default function ResultsPage() {
           </div>
 
           {/* Right: detail */}
-          <div className="flex-1 min-w-0">
+          <div
+            className={`min-w-0 ${
+              mobileViewingDetail ? "block" : "hidden lg:block"
+            }`}
+          >
+            <button
+              type="button"
+              onClick={() => setMobileViewingDetail(false)}
+              className="lg:hidden mb-3 inline-flex items-center gap-1 text-sm text-text-secondary hover:text-accent"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M19 12H5" />
+                <path d="M12 19l-7-7 7-7" />
+              </svg>
+              返回赛事列表
+            </button>
             {!selectedId ? (
               <div className="glass rounded-xl p-8 text-center text-text-muted text-sm">
                 选择左侧赛事查看详情
@@ -338,43 +415,79 @@ function MatchDetailView({ detail, summary }: { detail: MatchDetail; summary: Ma
         {betItems.length === 0 ? (
           <div className="text-text-muted text-sm">本场暂无下注</div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-text-muted text-xs">
-                  <th className="text-left py-2 px-2 font-medium">玩家</th>
-                  <th className="text-left py-2 px-2 font-medium">玩法</th>
-                  <th className="text-left py-2 px-2 font-medium">选择</th>
-                  <th className="text-right py-2 px-2 font-medium">赔率</th>
-                  <th className="text-right py-2 px-2 font-medium">金额</th>
-                  <th className="text-left py-2 px-2 font-medium">结果</th>
-                </tr>
-              </thead>
-              <tbody>
-                {betItems.map((bi) => {
-                  const resultInfo = RESULT_MAP[bi.result] || { label: bi.result, color: "" };
-                  const isParlay = bi.bet.betMode === "PARLAY";
-                  return (
-                    <tr key={bi.id} className="border-b border-border/40 last:border-0">
-                      <td className="py-2 px-2">
-                        <div className="flex items-center gap-1.5">
-                          <span>{bi.bet.user?.nickname || "-"}</span>
-                          {isParlay && (
-                            <span className="text-xs px-1.5 py-0.5 rounded bg-accent/10 text-accent">串关</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="py-2 px-2 text-text-secondary">{MARKET_NAMES[bi.betMarket] || bi.betMarket}</td>
-                      <td className={`py-2 px-2 ${bi.result === "WON" ? "text-accent" : ""}`}>{formatOptionLabel(bi.betMarket, bi.selectedOption)}</td>
-                      <td className="py-2 px-2 text-right text-text-secondary">{bi.lockedOdds.toFixed(2)}</td>
-                      <td className="py-2 px-2 text-right">{bi.bet.totalAmount.toFixed(0)}</td>
-                      <td className={`py-2 px-2 ${bi.result === "WON" ? "text-accent" : ""}`}>{resultInfo.label}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <>
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border text-text-muted text-xs">
+                    <th className="text-left py-2 px-2 font-medium">玩家</th>
+                    <th className="text-left py-2 px-2 font-medium">玩法</th>
+                    <th className="text-left py-2 px-2 font-medium">选择</th>
+                    <th className="text-right py-2 px-2 font-medium">赔率</th>
+                    <th className="text-right py-2 px-2 font-medium">金额</th>
+                    <th className="text-left py-2 px-2 font-medium">结果</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {betItems.map((bi) => {
+                    const resultInfo = RESULT_MAP[bi.result] || { label: bi.result, color: "" };
+                    const isParlay = bi.bet.betMode === "PARLAY";
+                    return (
+                      <tr key={bi.id} className="border-b border-border/40 last:border-0">
+                        <td className="py-2 px-2">
+                          <div className="flex items-center gap-1.5">
+                            <span>{bi.bet.user?.nickname || "-"}</span>
+                            {isParlay && (
+                              <span className="text-xs px-1.5 py-0.5 rounded bg-accent/10 text-accent">串关</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-2 px-2 text-text-secondary">{MARKET_NAMES[bi.betMarket] || bi.betMarket}</td>
+                        <td className={`py-2 px-2 ${bi.result === "WON" ? "text-accent" : ""}`}>{formatOptionLabel(bi.betMarket, bi.selectedOption)}</td>
+                        <td className="py-2 px-2 text-right text-text-secondary">{bi.lockedOdds.toFixed(2)}</td>
+                        <td className="py-2 px-2 text-right">{bi.bet.totalAmount.toFixed(0)}</td>
+                        <td className={`py-2 px-2 ${bi.result === "WON" ? "text-accent" : ""}`}>{resultInfo.label}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="md:hidden space-y-2">
+              {betItems.map((bi) => {
+                const resultInfo = RESULT_MAP[bi.result] || { label: bi.result, color: "" };
+                const isParlay = bi.bet.betMode === "PARLAY";
+                const won = bi.result === "WON";
+                return (
+                  <div
+                    key={bi.id}
+                    className={`rounded-lg border p-3 ${
+                      won ? "border-accent/30 bg-accent/5" : "border-border bg-bg-primary"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2 mb-1.5">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="font-medium text-sm truncate">{bi.bet.user?.nickname || "-"}</span>
+                        {isParlay && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/10 text-accent shrink-0">串关</span>
+                        )}
+                      </div>
+                      <span className={`text-xs px-1.5 py-0.5 rounded ${won ? "bg-accent/15 text-accent" : "bg-bg-elevated text-text-muted"}`}>
+                        {resultInfo.label}
+                      </span>
+                    </div>
+                    <div className="text-sm">
+                      <span className="text-text-secondary">{MARKET_NAMES[bi.betMarket] || bi.betMarket}</span>
+                      <span className={`ml-1 ${won ? "text-accent font-medium" : ""}`}>{formatOptionLabel(bi.betMarket, bi.selectedOption)}</span>
+                      <span className="text-text-muted ml-1">@ {bi.lockedOdds.toFixed(2)}</span>
+                    </div>
+                    <div className="text-xs text-text-muted mt-1">金额 {bi.bet.totalAmount.toFixed(0)}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
         )}
       </div>
 
@@ -384,7 +497,7 @@ function MatchDetailView({ detail, summary }: { detail: MatchDetail; summary: Ma
         {resultStatus.summaryLabel ? (
           <div className="text-text-muted text-sm">{resultStatus.summaryLabel}</div>
         ) : (
-          <div className="grid grid-cols-4 gap-3 text-center">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 text-center">
             <SummaryCell label="中奖笔数" value={summary?.winCount?.toString() ?? "0"} accent />
             <SummaryCell label="未中奖笔数" value={summary?.loseCount?.toString() ?? "0"} />
             <SummaryCell label="总投注" value={(summary?.totalBetAmount ?? 0).toFixed(0)} />

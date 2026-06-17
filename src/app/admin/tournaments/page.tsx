@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { displayTeamName } from "@/lib/team-display";
+import { AdminMobileTopBar } from "@/components/admin/mobile-nav";
+import { InlineFullscreen } from "@/components/admin/inline-fullscreen";
+import { Sheet } from "@/components/admin/sheet";
 
 interface Tournament {
   id:number;
@@ -178,6 +181,8 @@ export default function AdminTournamentsPage() {
   const [pullOutcome, setPullOutcome] = useState<PullOutcome | null>(null);
   const [scheduledPullLogs, setScheduledPullLogs] = useState<PullLog[]>([]);
   const [scheduledPullLogsLoading, setScheduledPullLogsLoading] = useState(true);
+  const [showMobileActions, setShowMobileActions] = useState(false);
+  const [showLogSheet, setShowLogSheet] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -483,14 +488,59 @@ export default function AdminTournamentsPage() {
   const renderMatchRow = (m: Match) => {
     const kickoff = new Date(m.kickoffTime);
     const timeStr = kickoff.toLocaleString("zh-CN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    const mobileTimeStr = kickoff.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false });
     const isFinished = m.status === "FINISHED";
     const hasStarted = kickoff.getTime() <= Date.now();
     const hasOdds = Object.keys(m.odds.x1x).length > 0;
+    const statusText = isFinished
+      ? m.homeScore !== null
+        ? `${m.homeScore} : ${m.awayScore} · 已结算`
+        : "已结算"
+      : hasStarted
+        ? "进行中"
+        : hasOdds
+          ? "未开赛 · 赔率已配"
+          : "未开赛 · 赔率待配";
     return (
-      <div key={m.id} className="bg-bg-primary rounded-lg px-3 py-2.5 flex items-center justify-between">
-        <div className="flex items-center gap-2 flex-1 min-w-0">
+      <div key={m.id} className="bg-bg-primary md:rounded-lg px-3.5 md:px-3 py-2.5 border-t border-border/60 first:border-t-0 md:border-t-0 md:flex md:items-center md:justify-between">
+        <div className="md:hidden flex items-center gap-2 min-w-0">
+          <div className="w-10 shrink-0 text-[11px] text-text-muted font-display num">{mobileTimeStr}</div>
+          <div className="flex-1 min-w-0">
+            <div className="text-[13px] font-medium truncate">{displayTeamName(m.homeTeam)} vs {displayTeamName(m.awayTeam)}</div>
+            <div className={`text-[11px] mt-0.5 ${isFinished ? "text-emerald-500" : hasStarted ? "text-red" : "text-text-secondary"}`}>{statusText}</div>
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
+            {!isFinished && (
+              <button
+                onClick={() => openOddsModal(m)}
+                className={`text-xs px-2 py-1 rounded-md ${hasOdds ? "btn-ghost" : "btn-primary"}`}
+              >
+                {hasOdds ? "赔率" : "配置"}
+              </button>
+            )}
+            <button
+              onClick={() => {
+                setSettleMatchData(m);
+                setSettleForm({
+                  homeScore: m.homeScore?.toString() ?? "",
+                  awayScore: m.awayScore?.toString() ?? "",
+                  halfHomeScore: m.halfHomeScore?.toString() ?? "",
+                  halfAwayScore: m.halfAwayScore?.toString() ?? "",
+                  finalHomeScore: m.finalHomeScore?.toString() ?? "",
+                  finalAwayScore: m.finalAwayScore?.toString() ?? "",
+                });
+                setShowSettle(true);
+              }}
+              className="text-xs px-2 py-1 rounded-md btn-ghost"
+            >
+              {isFinished ? "查看" : "结算"}
+            </button>
+          </div>
+        </div>
+
+        <div className="hidden md:flex flex-wrap md:flex-nowrap items-center gap-2 flex-1 min-w-0">
           <span className="text-sm text-text-muted whitespace-nowrap">{timeStr}</span>
-          <span className="text-sm font-medium truncate">{displayTeamName(m.homeTeam)} vs {displayTeamName(m.awayTeam)}</span>
+          <span className="text-sm font-medium truncate max-w-full md:max-w-none">{displayTeamName(m.homeTeam)} vs {displayTeamName(m.awayTeam)}</span>
           {isFinished ? (
             <span className="text-sm bg-blue-500/10 text-blue-400 px-1.5 py-0.5 rounded">已结算</span>
           ) : hasStarted ? (
@@ -511,7 +561,7 @@ export default function AdminTournamentsPage() {
             <span className="text-sm bg-green/10 text-green px-1.5 py-0.5 rounded">已设赔率</span>
           )}
         </div>
-        <div className="flex items-center gap-1.5 ml-2 shrink-0">
+        <div className="hidden md:flex md:items-center gap-1.5 md:ml-2 shrink-0">
           {!isFinished && (
             <button
               onClick={() => openOddsModal(m)}
@@ -544,14 +594,53 @@ export default function AdminTournamentsPage() {
 
   return (
     <div className="w-full">
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_440px] items-start">
+      <AdminMobileTopBar
+        title="赛事管理"
+        right={
+          <>
+            <button
+              type="button"
+              onClick={() => setShowCreateTournament(true)}
+              className="btn-primary px-3 py-1.5 rounded-lg text-xs"
+            >
+              新建
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowMobileActions(true)}
+              aria-label="更多操作"
+              className="p-2 -my-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-bg-elevated"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <path d="M12 5v.01M12 12v.01M12 19v.01" />
+              </svg>
+            </button>
+          </>
+        }
+      />
+
+      <Sheet open={showMobileActions} onClose={() => setShowMobileActions(false)} title="赛事操作" size="sm">
+        <div className="space-y-1.5">
+          <MobileActionButton label={fetch500Loading ? "抓取中..." : "更新世界杯赔率"} disabled={fetch500Loading} onClick={() => { setShowMobileActions(false); handleFetch500(); }} />
+          <MobileActionButton label={fetchResultsLoading ? "抓取中..." : "更新赛果"} disabled={fetchResultsLoading} onClick={() => { setShowMobileActions(false); handleFetchResults(); }} />
+          <MobileActionButton label="删除重复赛事" danger onClick={() => { setShowMobileActions(false); handleDedup(); }} />
+          <MobileActionButton label="从本地数据导入" onClick={() => { setShowMobileActions(false); setShowImport(true); }} />
+          <MobileActionButton label="查看定时拉取日志" onClick={() => { setShowMobileActions(false); setShowLogSheet(true); }} />
+        </div>
+      </Sheet>
+
+      <Sheet open={showLogSheet} onClose={() => setShowLogSheet(false)} title="定时拉取日志" size="lg">
+        <ScheduledPullLogPanel logs={scheduledPullLogs} loading={scheduledPullLogsLoading} onRefresh={loadScheduledPullLogs} compact />
+      </Sheet>
+
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_440px] items-start mt-3 md:mt-0">
         <div className="min-w-0">
-      <div className="flex items-center justify-between mb-4">
+      <div className="hidden md:flex items-center justify-between mb-4">
         <div>
           <h2 className="font-display text-lg font-semibold">赛事管理</h2>
           <p className="text-text-muted text-sm mt-1">管理赛事、比赛和赔率</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <button
             onClick={handleFetch500}
             disabled={fetch500Loading}
@@ -598,23 +687,21 @@ export default function AdminTournamentsPage() {
               <div key={t.id} className="glass rounded-xl overflow-hidden">
                 <button
                   onClick={() => setExpandedTournament(isExpanded ? null : t.id)}
-                  className="w-full px-5 py-4 flex items-center justify-between text-left"
+                  className={`w-full px-3.5 md:px-5 py-3 md:py-4 flex items-center justify-between gap-2 text-left ${isExpanded ? "border-b border-border" : ""}`}
                 >
-                  <div>
-                    <h3 className="font-medium text-sm">{t.name}</h3>
-                    <div className="flex items-center gap-3 mt-1 text-sm text-text-secondary">
-                      <span>League ID: {t.leagueId}</span>
-                      <span>赛季: {t.season}</span>
-                      <span>{t.startDate.slice(0, 10)} ~ {t.endDate.slice(0, 10)}</span>
+                  <div className="min-w-0">
+                    <h3 className="font-display font-semibold text-[15px] md:text-sm truncate">{t.name}</h3>
+                    <div className="text-[11px] md:text-sm text-text-muted mt-0.5">
+                      {tMatches.length} 场比赛 · {tMatches.filter((m) => m.status === "FINISHED").length} 已结算
+                      <span className="hidden md:inline"> · League ID: {t.leagueId} · 赛季: {t.season} · {t.startDate.slice(0, 10)} ~ {t.endDate.slice(0, 10)}</span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-sm px-2 py-0.5 rounded-full font-medium ${
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className={`hidden md:inline-flex text-sm px-2 py-0.5 rounded-full font-medium ${
                       t.status === "ACTIVE" ? "bg-accent/15 text-accent" : "text-text-muted bg-bg-elevated"
                     }`}>
                       {t.status === "ACTIVE" ? "进行中" : t.status === "UPCOMING" ? "未开始" : "已结束"}
                     </span>
-                    <span className="text-text-muted text-sm">{tMatches.length}场</span>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`text-text-muted transition-transform ${isExpanded ? "rotate-180" : ""}`}>
                       <path d="M6 9l6 6 6-6" />
                     </svg>
@@ -622,14 +709,14 @@ export default function AdminTournamentsPage() {
                 </button>
 
                 {isExpanded && (
-                  <div className="px-5 pb-4 border-t border-border">
-                    <div className="flex items-center justify-between py-3">
-                      <span className="text-sm text-text-secondary">比赛列表</span>
+                  <div className="px-0 md:px-5 pb-2 md:pb-4">
+                    <div className="flex items-center justify-between px-3.5 md:px-0 py-2.5 md:py-3">
+                      <span className="text-xs md:text-sm text-text-secondary">比赛列表</span>
                       <button
                         onClick={() => { setSelectedTournamentId(t.id); setShowCreateMatch(true); }}
-                        className="text-sm bg-accent/10 text-accent px-2.5 py-1 rounded-lg hover:bg-accent/20 transition-colors"
+                        className="text-xs md:text-sm bg-accent/10 text-accent px-2.5 py-1 rounded-lg hover:bg-accent/20 transition-colors"
                       >
-                        + 手动添加比赛
+                        + 添加比赛
                       </button>
                     </div>
                     {tMatches.length === 0 ? (
@@ -640,9 +727,9 @@ export default function AdminTournamentsPage() {
                         const current = tMatches.filter((m) => !isMatchPast(m.kickoffTime));
                         const isPastExpanded = expandedPast.has(t.id);
                         return (
-                          <div className="space-y-2">
+                          <div className="space-y-0 md:space-y-2">
                             {past.length > 0 && (
-                              <div className="space-y-2">
+                              <div className="space-y-0 md:space-y-2">
                                 <button
                                   onClick={() => togglePast(t.id)}
                                   className="w-full flex items-center justify-between text-left text-sm text-text-secondary hover:text-text-primary transition-colors py-2 px-3 rounded-lg bg-bg-elevated/50"
@@ -668,20 +755,29 @@ export default function AdminTournamentsPage() {
         </div>
       )}
         </div>
-        <ScheduledPullLogPanel logs={scheduledPullLogs} loading={scheduledPullLogsLoading} onRefresh={loadScheduledPullLogs} />
+        <div className="hidden xl:block">
+          <ScheduledPullLogPanel logs={scheduledPullLogs} loading={scheduledPullLogsLoading} onRefresh={loadScheduledPullLogs} />
+        </div>
       </div>
 
-      {/* Pull Outcome Modal */}
-      {pullOutcome && (
-        <Modal onClose={() => setPullOutcome(null)} title={`${pullOutcome.kind === "ODDS" ? "更新世界杯赔率" : "更新赛果"} · ${pullOutcome.importDate}`} wide>
-          <PullOutcomeContent outcome={pullOutcome} />
-        </Modal>
-      )}
+      {/* Pull Outcome Sheet */}
+      <Sheet
+        open={!!pullOutcome}
+        onClose={() => setPullOutcome(null)}
+        title={pullOutcome ? `${pullOutcome.kind === "ODDS" ? "更新世界杯赔率" : "更新赛果"} · ${pullOutcome.importDate}` : "拉取结果"}
+        size="lg"
+      >
+        {pullOutcome && <PullOutcomeContent outcome={pullOutcome} />}
+      </Sheet>
 
-      {/* Create Tournament Modal */}
-      {showCreateTournament && (
-        <Modal onClose={() => setShowCreateTournament(false)} title="新建赛事">
-          <div className="space-y-3">
+      {/* Create Tournament Sheet */}
+      <Sheet
+        open={showCreateTournament}
+        onClose={() => setShowCreateTournament(false)}
+        title="新建赛事"
+        size="md"
+      >
+        <div className="space-y-3">
             <div>
               <label className="text-text-secondary text-sm mb-1.5 block">赛事名称</label>
               <input value={tournamentForm.name} onChange={(e) => setTournamentForm({ ...tournamentForm, name: e.target.value })} placeholder="如：2026 FIFA 世界杯" className="input-field w-full rounded-xl px-4 py-3 text-sm" />
@@ -713,14 +809,17 @@ export default function AdminTournamentsPage() {
             >
               创建赛事
             </button>
-          </div>
-        </Modal>
-      )}
+        </div>
+      </Sheet>
 
-      {/* Create Match Modal */}
-      {showCreateMatch && (
-        <Modal onClose={() => setShowCreateMatch(false)} title="手动添加比赛">
-          <div className="space-y-3">
+      {/* Create Match Sheet */}
+      <Sheet
+        open={showCreateMatch}
+        onClose={() => setShowCreateMatch(false)}
+        title="手动添加比赛"
+        size="md"
+      >
+        <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-text-secondary text-sm mb-1.5 block">主队</label>
@@ -742,14 +841,19 @@ export default function AdminTournamentsPage() {
             >
               添加比赛
             </button>
-          </div>
-        </Modal>
-      )}
+        </div>
+      </Sheet>
 
-      {/* Edit Odds Modal */}
-      {showEditOdds && selectedMatch && (
-        <Modal onClose={() => setShowEditOdds(false)} title={`编辑赔率 · ${displayTeamName(selectedMatch.homeTeam)} vs ${displayTeamName(selectedMatch.awayTeam)}`} wide>
-          <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+      {/* Edit Odds */}
+      <InlineFullscreen
+        open={showEditOdds && !!selectedMatch}
+        onClose={() => setShowEditOdds(false)}
+        title={selectedMatch ? `编辑赔率 · ${displayTeamName(selectedMatch.homeTeam)} vs ${displayTeamName(selectedMatch.awayTeam)}` : "编辑赔率"}
+        onSave={saveOdds}
+        saveLabel="保存"
+      >
+        {selectedMatch && (
+          <div className="space-y-4 p-4 md:p-6">
             {/* X1X */}
             <div>
               <label className="text-sm text-text-secondary mb-2 block font-medium">胜负 (X1X)</label>
@@ -789,7 +893,7 @@ export default function AdminTournamentsPage() {
               <label className="text-sm text-text-secondary mb-2 block font-medium">猜比分</label>
               <div className="space-y-1.5">
                 <span className="text-sm text-accent">主胜</span>
-                <div className="grid grid-cols-7 gap-1.5">
+                <div className="grid grid-cols-4 md:grid-cols-7 gap-1.5">
                   {([
                     ["cs_1:0", "1:0"], ["cs_2:0", "2:0"], ["cs_2:1", "2:1"], ["cs_3:0", "3:0"],
                     ["cs_3:1", "3:1"], ["cs_3:2", "3:2"], ["cs_4:0", "4:0"], ["cs_4:1", "4:1"],
@@ -802,7 +906,7 @@ export default function AdminTournamentsPage() {
                   ))}
                 </div>
                 <span className="text-sm text-yellow-500">平局</span>
-                <div className="grid grid-cols-7 gap-1.5">
+                <div className="grid grid-cols-4 md:grid-cols-7 gap-1.5">
                   {([
                     ["cs_0:0", "0:0"], ["cs_1:1", "1:1"], ["cs_2:2", "2:2"], ["cs_3:3", "3:3"],
                   ] as const).map(([key, label]) => (
@@ -813,7 +917,7 @@ export default function AdminTournamentsPage() {
                   ))}
                 </div>
                 <span className="text-sm text-red">客胜</span>
-                <div className="grid grid-cols-7 gap-1.5">
+                <div className="grid grid-cols-4 md:grid-cols-7 gap-1.5">
                   {([
                     ["cs_0:1", "0:1"], ["cs_0:2", "0:2"], ["cs_1:2", "1:2"], ["cs_0:3", "0:3"],
                     ["cs_1:3", "1:3"], ["cs_2:3", "2:3"], ["cs_0:4", "0:4"], ["cs_1:4", "1:4"],
@@ -841,7 +945,7 @@ export default function AdminTournamentsPage() {
             {/* Total Goals */}
             <div>
               <label className="text-sm text-text-secondary mb-2 block font-medium">总进球数</label>
-              <div className="grid grid-cols-8 gap-2">
+              <div className="grid grid-cols-4 md:grid-cols-8 gap-2">
                 {([
                   ["tg_0球", "0球"], ["tg_1球", "1球"], ["tg_2球", "2球"], ["tg_3球", "3球"],
                   ["tg_4球", "4球"], ["tg_5球", "5球"], ["tg_6球", "6球"], ["tg_7+", "7+"],
@@ -871,16 +975,18 @@ export default function AdminTournamentsPage() {
               </div>
             </div>
 
-            <button onClick={saveOdds} className="btn-primary w-full py-3 rounded-xl text-sm">
-              保存赔率
-            </button>
           </div>
-        </Modal>
-      )}
+        )}
+      </InlineFullscreen>
 
-      {/* Settle Modal */}
-      {showSettle && settleMatchData && (
-        <Modal onClose={() => setShowSettle(false)} title={`${settleMatchData.status === "FINISHED" ? "修改结算" : "结算"} · ${displayTeamName(settleMatchData.homeTeam)} vs ${displayTeamName(settleMatchData.awayTeam)}`}>
+      {/* Settle Sheet */}
+      <Sheet
+        open={showSettle && !!settleMatchData}
+        onClose={() => setShowSettle(false)}
+        title={settleMatchData ? `${settleMatchData.status === "FINISHED" ? "修改结算" : "结算"} · ${displayTeamName(settleMatchData.homeTeam)} vs ${displayTeamName(settleMatchData.awayTeam)}` : "结算"}
+        size="sm"
+      >
+        {settleMatchData && (
           <div className="space-y-3">
             <div>
               <div className="mb-2 text-sm font-semibold text-text-secondary">半场比分</div>
@@ -930,13 +1036,17 @@ export default function AdminTournamentsPage() {
               确认结算
             </button>
           </div>
-        </Modal>
-      )}
+        )}
+      </Sheet>
 
-      {/* Import Modal */}
-      {showImport && (
-        <Modal onClose={() => { setShowImport(false); setImportResult(""); }} title="从本地数据导入">
-          <div className="space-y-4">
+      {/* Import Sheet */}
+      <Sheet
+        open={showImport}
+        onClose={() => { setShowImport(false); setImportResult(""); }}
+        title="从本地数据导入"
+        size="md"
+      >
+        <div className="space-y-4">
             <div>
               <label className="text-text-secondary text-sm mb-1.5 block">导入到赛事</label>
               <select
@@ -984,28 +1094,37 @@ export default function AdminTournamentsPage() {
             {importResult && (
               <div className="text-accent text-sm text-center">{importResult}</div>
             )}
-          </div>
-        </Modal>
-      )}
+        </div>
+      </Sheet>
     </div>
   );
 }
 
-function Modal({ title, children, onClose, wide }: { title: string; children: React.ReactNode; onClose: () => void; wide?: boolean }) {
+function MobileActionButton({
+  label,
+  onClick,
+  disabled,
+  danger,
+}: {
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  danger?: boolean;
+}) {
   return (
-    <div className="fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4">
-      <div className={`bg-bg-surface w-full rounded-2xl p-6 animate-fade-in-up ${wide ? "max-w-[750px]" : "max-w-md"}`}>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-display text-base font-semibold">{title}</h3>
-          <button onClick={onClose} className="text-text-muted hover:text-text-secondary">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M18 6L6 18M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`w-full flex items-center justify-between px-3 py-3 rounded-xl text-sm font-medium transition-colors disabled:opacity-40 ${
+        danger ? "text-red hover:bg-red/5" : "text-text-primary hover:bg-bg-elevated"
+      }`}
+    >
+      <span>{label}</span>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-muted">
+        <path d="m9 18 6-6-6-6" />
+      </svg>
+    </button>
   );
 }
 
@@ -1040,9 +1159,9 @@ function PullOutcomeContent({ outcome }: { outcome: PullOutcome }) {
   );
 }
 
-function ScheduledPullLogPanel({ logs, loading, onRefresh }: { logs: PullLog[]; loading: boolean; onRefresh: () => void }) {
+function ScheduledPullLogPanel({ logs, loading, onRefresh, compact = false }: { logs: PullLog[]; loading: boolean; onRefresh: () => void; compact?: boolean }) {
   return (
-    <aside className="glass rounded-xl p-4 xl:sticky xl:top-6">
+    <aside className={`${compact ? "" : "glass rounded-xl p-4 xl:sticky xl:top-6"}`}>
       <div className="flex items-center justify-between mb-3">
         <div>
           <h3 className="font-display text-base font-semibold">定时拉取日志</h3>

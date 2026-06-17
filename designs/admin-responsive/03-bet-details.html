@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>03 · 下注详情 Bet Details · 响应式设计稿</title>
+<link rel="stylesheet" href="styles.css" />
+<style>
+  .bet-card { padding: 12px 14px; cursor: pointer; transition: all 0.15s; }
+  .bet-card.selected { box-shadow: 0 0 0 2px var(--color-accent); }
+  .bet-card .row1 {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 8px; margin-bottom: 4px;
+  }
+  .bet-card .player { font-size: 14px; font-weight: 600; }
+  .bet-card .mode-tag {
+    background: var(--color-accent-glow); color: var(--color-accent);
+    font-size: 11px; padding: 2px 8px; border-radius: 4px;
+    font-family: var(--font-display); font-weight: 600;
+  }
+  .bet-card .matches {
+    font-size: 13px; color: var(--color-text-primary);
+    margin: 4px 0 6px; line-height: 1.5;
+  }
+  .bet-card .row2 {
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 11px; color: var(--color-text-muted);
+  }
+  .bet-card .nums {
+    display: flex; gap: 10px; font-family: var(--font-display); font-variant-numeric: tabular-nums;
+  }
+
+  .detail-section { padding: 12px 14px; }
+  .detail-section + .detail-section { border-top: 1px solid var(--color-border); }
+  .detail-section .title {
+    font-family: var(--font-display); font-size: 11px; font-weight: 600;
+    color: var(--color-text-muted); letter-spacing: 0.5px;
+    text-transform: uppercase; margin-bottom: 8px;
+  }
+  .detail-section .match-name { font-size: 14px; font-weight: 600; }
+  .detail-section .match-meta { font-size: 11px; color: var(--color-text-muted); margin-top: 2px; }
+
+  .market-block { margin-bottom: 10px; }
+  .market-block:last-child { margin-bottom: 0; }
+  .market-block .m-title { font-size: 12px; color: var(--color-text-secondary); margin-bottom: 5px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+  .grid-8 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+
+  .o-cell {
+    padding: 6px 4px; background: var(--color-bg-surface); border: 1px solid var(--color-border);
+    border-radius: 5px; text-align: center; font-size: 10px;
+  }
+  .o-cell .o-opt { color: var(--color-text-secondary); display: block; }
+  .o-cell .o-val { font-family: var(--font-display); font-weight: 700; color: var(--color-text-primary); font-size: 11px; }
+  .o-cell.wagered { background: rgba(230,0,18,0.08); border-color: rgba(230,0,18,0.45); }
+  .o-cell.wagered .o-opt, .o-cell.wagered .o-val { color: var(--color-accent); }
+  .o-cell.win { background: rgba(16,185,129,0.1); border-color: rgba(16,185,129,0.4); }
+  .o-cell.win .o-opt, .o-cell.win .o-val { color: var(--color-emerald); }
+
+  .record-row {
+    padding: 8px 10px; border-radius: 6px; background: var(--color-bg-surface);
+    border: 1px solid var(--color-border);
+    display: flex; align-items: center; gap: 8px; font-size: 11px;
+    margin-bottom: 4px;
+  }
+  .record-row.highlight { border-color: rgba(230,0,18,0.4); background: rgba(230,0,18,0.05); }
+  .record-row .rname { font-weight: 600; color: var(--color-text-primary); }
+  .record-row .rcontent { color: var(--color-text-secondary); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .record-row .rodds { color: var(--color-text-muted); font-family: var(--font-display); }
+</style>
+</head>
+<body class="mockup-canvas">
+
+<header class="mockup-header">
+  <div>
+    <h1 class="mockup-title"><span class="accent">03</span> · 下注详情 Bet Details</h1>
+    <p class="mockup-subtitle">左右双栏 → drill-down；点击列表卡片进入详情；详情显示该场所有玩家的下注</p>
+  </div>
+  <a class="btn btn-ghost btn-sm" href="index.html">← 返回索引</a>
+</header>
+
+<div class="mockup-frame-row triple">
+
+  <!-- ============ PHONE 1: LIST ============ -->
+  <div>
+    <div class="frame-label">Mobile · 下注列表</div>
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <div class="phone-statusbar">
+          <span>9:41</span>
+          <span class="right">
+            <svg width="14" height="10" viewBox="0 0 18 12" fill="currentColor"><path d="M1 11h2V5H1v6zm4 0h2V1H5v10zm4 0h2V7H9v4zm4 0h2V3h-2v8zm4 0h2V5h-2v6z"/></svg>
+            <svg width="20" height="10" viewBox="0 0 26 12" fill="none"><rect x="1" y="1" width="22" height="10" rx="2.5" stroke="currentColor" stroke-opacity="0.5"/><rect x="3" y="3" width="16" height="6" rx="1" fill="currentColor"/></svg>
+          </span>
+        </div>
+        <div class="mobile-topbar">
+          <button class="icon-btn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+          <div class="title">下注详情</div>
+          <button class="icon-btn"></button>
+        </div>
+
+        <div class="app-content mobile">
+          <div class="chip-row" style="margin-bottom:10px">
+            <span class="chip active">全部</span>
+            <span class="chip">已下注</span>
+            <span class="chip">已中奖</span>
+            <span class="chip">未中奖</span>
+          </div>
+          <div style="margin-bottom:10px">
+            <select class="input">
+              <option>全部玩家</option>
+              <option>张三</option>
+            </select>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <a class="glass bet-card selected" href="#detail" style="text-decoration:none;color:inherit">
+              <div class="row1">
+                <div style="display:flex;align-items:center;gap:6px"><span class="player">张三</span><span class="mode-tag">串关 ×2</span></div>
+                <span class="badge badge-active">已下注</span>
+              </div>
+              <div class="matches">沙特阿拉伯 vs 日本 · 阿根廷 vs 法国</div>
+              <div class="row2">
+                <span>06-16 14:32</span>
+                <div class="nums"><span>@ 6.40</span><span style="color:var(--color-text-primary);font-weight:600">下注 200</span></div>
+              </div>
+            </a>
+
+            <a class="glass bet-card" href="#detail" style="text-decoration:none;color:inherit">
+              <div class="row1">
+                <div style="display:flex;align-items:center;gap:6px"><span class="player">李四</span></div>
+                <span class="badge badge-won">已中奖</span>
+              </div>
+              <div class="matches">巴西 vs 克罗地亚</div>
+              <div class="row2">
+                <span>06-15 19:01</span>
+                <div class="nums"><span>@ 2.15</span><span style="color:var(--color-text-primary);font-weight:600">下注 500</span></div>
+              </div>
+            </a>
+
+            <a class="glass bet-card" href="#detail" style="text-decoration:none;color:inherit">
+              <div class="row1">
+                <div style="display:flex;align-items:center;gap:6px"><span class="player">王五</span><span class="mode-tag">串关 ×3</span></div>
+                <span class="badge badge-lost">未中奖</span>
+              </div>
+              <div class="matches">英格兰 vs 西班牙 · 葡萄牙 vs 摩洛哥 · 荷兰 vs 塞内加尔</div>
+              <div class="row2">
+                <span>06-15 22:18</span>
+                <div class="nums"><span>@ 12.5</span><span style="color:var(--color-text-primary);font-weight:600">下注 100</span></div>
+              </div>
+            </a>
+          </div>
+        </div>
+        <div class="phone-home"></div>
+      </div>
+    </div>
+    <div class="anno-row">
+      <span class="anno">第一张为「选中态」</span>
+      <span class="anno">点击任意卡片 → 右侧详情</span>
+    </div>
+  </div>
+
+  <!-- ============ PHONE 2: DETAIL ============ -->
+  <div id="detail">
+    <div class="frame-label">Mobile · 详情（点击后）</div>
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <div class="phone-statusbar">
+          <span>9:41</span>
+          <span class="right">
+            <svg width="14" height="10" viewBox="0 0 18 12" fill="currentColor"><path d="M1 11h2V5H1v6zm4 0h2V1H5v10zm4 0h2V7H9v4zm4 0h2V3h-2v8zm4 0h2V5h-2v6z"/></svg>
+            <svg width="20" height="10" viewBox="0 0 26 12" fill="none"><rect x="1" y="1" width="22" height="10" rx="2.5" stroke="currentColor" stroke-opacity="0.5"/><rect x="3" y="3" width="16" height="6" rx="1" fill="currentColor"/></svg>
+          </span>
+        </div>
+        <div class="mobile-topbar">
+          <button class="icon-btn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
+          <div class="title">下注详情</div>
+          <button class="icon-btn"></button>
+        </div>
+
+        <div class="app-content mobile" style="padding:0">
+          <!-- bet summary -->
+          <div class="glass" style="margin:12px;padding:12px 14px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+              <div style="display:flex;align-items:center;gap:6px">
+                <span style="font-size:14px;font-weight:600">张三</span>
+                <span class="mode-tag" style="background:var(--color-accent-glow);color:var(--color-accent);font-size:11px;padding:2px 8px;border-radius:4px;font-family:var(--font-display);font-weight:600">串关 ×2</span>
+              </div>
+              <span class="badge badge-active">已下注</span>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--color-text-muted)">
+              <span>06-16 14:32 · 赔率 6.40 · 下注 200</span>
+              <span style="color:var(--color-accent);font-weight:600">潜在 +1,280</span>
+            </div>
+          </div>
+
+          <!-- match 1 detail -->
+          <div class="glass" style="margin:0 12px 12px;overflow:hidden">
+            <div class="detail-section">
+              <div class="title">第 1 场</div>
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+                <div>
+                  <div class="match-name">沙特阿拉伯 vs 日本</div>
+                  <div class="match-meta">06-16 20:00 开赛</div>
+                </div>
+                <span class="badge badge-active" style="font-size:11px">未开赛</span>
+              </div>
+            </div>
+
+            <div class="detail-section" style="background:var(--color-bg-surface)">
+              <div class="title">该场所有下注</div>
+
+              <div class="market-block">
+                <div class="m-title">胜平负 · 4 人下注</div>
+                <div class="grid-3">
+                  <div class="o-cell wagered"><span class="o-opt">主胜</span><span class="o-val">2.85</span></div>
+                  <div class="o-cell wagered"><span class="o-opt">平</span><span class="o-val">3.20</span></div>
+                  <div class="o-cell wagered"><span class="o-opt">客胜</span><span class="o-val">2.45</span></div>
+                </div>
+              </div>
+
+              <div style="margin-top:8px">
+                <div class="record-row highlight">
+                  <span class="rname">张三</span>
+                  <span class="rcontent">胜平负 · 主胜</span>
+                  <span class="rodds">@ 2.85</span>
+                </div>
+                <div class="record-row">
+                  <span class="rname">李四</span>
+                  <span class="rcontent">胜平负 · 平</span>
+                  <span class="rodds">@ 3.20</span>
+                </div>
+                <div class="record-row">
+                  <span class="rname">赵六</span>
+                  <span class="rcontent">胜平负 · 客胜</span>
+                  <span class="rodds">@ 2.45</span>
+                </div>
+                <div class="record-row">
+                  <span class="rname">钱七</span>
+                  <span class="rcontent">让球 · 主胜 +1</span>
+                  <span class="rodds">@ 2.10</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- match 2 detail -->
+          <div class="glass" style="margin:0 12px 12px;overflow:hidden">
+            <div class="detail-section">
+              <div class="title">第 2 场</div>
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+                <div>
+                  <div class="match-name">阿根廷 vs 法国</div>
+                  <div class="match-meta">06-17 03:00 开赛</div>
+                </div>
+                <span class="badge badge-active" style="font-size:11px">未开赛</span>
+              </div>
+            </div>
+
+            <div class="detail-section" style="background:var(--color-bg-surface)">
+              <div class="title">该场所有下注</div>
+
+              <div class="market-block">
+                <div class="m-title">胜平负 · 2 人下注</div>
+                <div class="grid-3">
+                  <div class="o-cell"><span class="o-opt">主胜</span><span class="o-val">2.40</span></div>
+                  <div class="o-cell"><span class="o-opt">平</span><span class="o-val">3.10</span></div>
+                  <div class="o-cell wagered"><span class="o-opt">客胜</span><span class="o-val">2.80</span></div>
+                </div>
+              </div>
+
+              <div style="margin-top:8px">
+                <div class="record-row highlight">
+                  <span class="rname">张三</span>
+                  <span class="rcontent">胜平负 · 客胜</span>
+                  <span class="rodds">@ 2.80</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="phone-home"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ BROWSER ============ -->
+  <div>
+    <div class="frame-label">Web · 1280px+</div>
+    <div class="browser">
+      <div class="browser-bar">
+        <div class="browser-dots"><span></span><span></span><span></span></div>
+        <div class="browser-url">localhost:3001/admin/bet-details</div>
+      </div>
+      <div class="browser-viewport">
+        <div class="app-shell">
+          <aside class="sidebar">
+            <div class="sidebar-brand"><span class="accent">嗨</span>起来<span class="tag">管理后台</span></div>
+            <nav class="sidebar-nav">
+              <a href="01-dashboard.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>总览</a>
+              <a href="02-bet-entry.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>下注管理</a>
+              <a class="active" href="#"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>下注详情</a>
+              <a href="04-players.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>玩家管理</a>
+              <a href="05-tournaments.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/></svg>赛事管理</a>
+              <a href="06-results.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="m9 15 2 2 4-4"/></svg>赛果查看</a>
+              <a href="07-redemptions.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>兑奖管理</a>
+            </nav>
+            <div class="sidebar-footer"><a href="#" style="color:inherit;text-decoration:none">← 返回玩家端</a></div>
+          </aside>
+
+          <main class="app-content">
+            <h2 class="font-display" style="font-size:20px;font-weight:700;margin:0 0 4px">下注详情</h2>
+            <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 16px">点击左侧下注，右侧查看对应赛事详情</p>
+
+            <!-- filter bar -->
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+              <div style="display:flex;gap:6px">
+                <span class="chip active">全部</span>
+                <span class="chip">已下注</span>
+                <span class="chip">已中奖</span>
+                <span class="chip">未中奖</span>
+              </div>
+              <select class="input" style="width:auto">
+                <option>全部玩家</option><option>张三</option>
+              </select>
+            </div>
+
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:flex-start">
+
+              <!-- left: list -->
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <a class="glass bet-card selected" href="#" style="text-decoration:none;color:inherit">
+                  <div class="row1">
+                    <div style="display:flex;align-items:center;gap:6px"><span class="player">张三</span><span class="mode-tag">串关 ×2</span></div>
+                    <span class="badge badge-active">已下注</span>
+                  </div>
+                  <div class="matches">沙特阿拉伯 vs 日本 · 阿根廷 vs 法国</div>
+                  <div class="row2">
+                    <span>06-16 14:32</span>
+                    <div class="nums"><span>@ 6.40</span><span style="color:var(--color-text-primary);font-weight:600">下注 200</span></div>
+                  </div>
+                </a>
+                <a class="glass bet-card" href="#" style="text-decoration:none;color:inherit">
+                  <div class="row1">
+                    <div style="display:flex;align-items:center;gap:6px"><span class="player">李四</span></div>
+                    <span class="badge badge-won">已中奖</span>
+                  </div>
+                  <div class="matches">巴西 vs 克罗地亚</div>
+                  <div class="row2">
+                    <span>06-15 19:01</span>
+                    <div class="nums"><span>@ 2.15</span><span style="color:var(--color-text-primary);font-weight:600">下注 500</span></div>
+                  </div>
+                </a>
+                <a class="glass bet-card" href="#" style="text-decoration:none;color:inherit">
+                  <div class="row1">
+                    <div style="display:flex;align-items:center;gap:6px"><span class="player">王五</span><span class="mode-tag">串关 ×3</span></div>
+                    <span class="badge badge-lost">未中奖</span>
+                  </div>
+                  <div class="matches">英格兰 vs 西班牙 · 葡萄牙 vs 摩洛哥 · 荷兰 vs 塞内加尔</div>
+                  <div class="row2">
+                    <span>06-15 22:18</span>
+                    <div class="nums"><span>@ 12.5</span><span style="color:var(--color-text-primary);font-weight:600">下注 100</span></div>
+                  </div>
+                </a>
+              </div>
+
+              <!-- right: overview -->
+              <aside style="position:sticky;top:24px">
+                <div class="glass" style="overflow:hidden">
+                  <div style="padding:12px 14px;border-bottom:1px solid var(--color-border);display:flex;align-items:center;justify-content:space-between">
+                    <h3 class="font-display" style="font-size:16px;font-weight:700;margin:0">赛事下注概览</h3>
+                    <span class="badge badge-won" style="font-size:11px">选中下注</span>
+                  </div>
+
+                  <div class="detail-section">
+                    <div class="title">第 1 场 · 赛事详情</div>
+                    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+                      <div>
+                        <div class="match-name">沙特阿拉伯 vs 日本</div>
+                        <div class="match-meta">06-16 20:00 开赛</div>
+                      </div>
+                      <span class="badge badge-active" style="font-size:11px">未开赛</span>
+                    </div>
+                  </div>
+
+                  <div class="detail-section" style="background:var(--color-bg-surface)">
+                    <div class="title">赔率详情 · 4 人下注</div>
+                    <div class="market-block">
+                      <div class="m-title">胜平负</div>
+                      <div class="grid-3">
+                        <div class="o-cell wagered"><span class="o-opt">主胜</span><span class="o-val">2.85</span></div>
+                        <div class="o-cell wagered"><span class="o-opt">平</span><span class="o-val">3.20</span></div>
+                        <div class="o-cell wagered"><span class="o-opt">客胜</span><span class="o-val">2.45</span></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="detail-section">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                      <div class="title" style="margin:0">下注详情</div>
+                      <span style="font-size:11px;color:var(--color-text-muted)">共 4 条</span>
+                    </div>
+                    <div class="record-row highlight">
+                      <span class="rname">张三</span>
+                      <span class="rcontent">胜平负 · 主胜</span>
+                      <span class="rodds">@ 2.85</span>
+                    </div>
+                    <div class="record-row">
+                      <span class="rname">李四</span>
+                      <span class="rcontent">胜平负 · 平</span>
+                      <span class="rodds">@ 3.20</span>
+                    </div>
+                    <div class="record-row">
+                      <span class="rname">赵六</span>
+                      <span class="rcontent">胜平负 · 客胜</span>
+                      <span class="rodds">@ 2.45</span>
+                    </div>
+                  </div>
+                </div>
+              </aside>
+            </div>
+          </main>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

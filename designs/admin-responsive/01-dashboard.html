@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>01 · 总览 Dashboard · 响应式设计稿</title>
+<link rel="stylesheet" href="styles.css" />
+<style>
+  /* page-specific styles */
+  .desktop-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .mobile-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .mobile-stat-grid .stat-card { padding: 12px 14px; }
+  .mobile-stat-grid .stat-card .label { font-size: 11px; }
+  .mobile-stat-grid .stat-card .value { font-size: 18px; }
+
+  .rank-card {
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .rank-card .rank-no {
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 14px;
+    background: var(--color-bg-elevated);
+    color: var(--color-text-muted);
+    flex-shrink: 0;
+  }
+  .rank-card.top1 .rank-no { background: linear-gradient(135deg, #f4b42a, #d99510); color: white; }
+  .rank-card.top2 .rank-no { background: linear-gradient(135deg, #c8c8cc, #a0a0a6); color: white; }
+  .rank-card.top3 .rank-no { background: linear-gradient(135deg, #cd7f32, #a86420); color: white; }
+
+  .rank-card .main {
+    flex: 1;
+    min-width: 0;
+  }
+  .rank-card .name-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  .rank-card .name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+  .rank-card .profit {
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .rank-card .profit.pos { color: var(--color-red); }
+  .rank-card .profit.neg { color: var(--color-emerald); }
+  .rank-card .meta {
+    font-size: 11px;
+    color: var(--color-text-muted);
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .rank-card .meta span { display: inline-flex; align-items: center; gap: 3px; }
+</style>
+</head>
+<body class="mockup-canvas">
+
+<header class="mockup-header">
+  <div>
+    <h1 class="mockup-title"><span class="accent">01</span> · 总览 Dashboard</h1>
+    <p class="mockup-subtitle">9 列排名表 → 卡片列表；3 列统计卡 → 2 列；新增汉堡 + 全屏抽屉导航</p>
+  </div>
+  <a class="btn btn-ghost btn-sm" href="index.html">← 返回索引</a>
+</header>
+
+<div class="mockup-frame-row">
+
+  <!-- ============ PHONE ============ -->
+  <div>
+    <div class="frame-label">Mobile · 390px</div>
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="phone-screen" id="phoneScreen">
+
+        <!-- status bar -->
+        <div class="phone-statusbar">
+          <span>9:41</span>
+          <span class="right">
+            <svg width="14" height="10" viewBox="0 0 18 12" fill="currentColor"><path d="M1 11h2V5H1v6zm4 0h2V1H5v10zm4 0h2V7H9v4zm4 0h2V3h-2v8zm4 0h2V5h-2v6z"/></svg>
+            <svg width="14" height="10" viewBox="0 0 18 12" fill="currentColor"><path d="M9 2.5c2.1 0 4.1.8 5.6 2.2l.7-.7C13.7 2.5 11.4 1.5 9 1.5S4.3 2.5 2.7 4l.7.7C4.9 3.3 6.9 2.5 9 2.5zm0 3c1.3 0 2.6.5 3.5 1.5l.7-.7C12.2 5.4 10.6 4.8 9 4.8s-3.2.6-4.2 1.5l.7.7c.9-1 2.2-1.5 3.5-1.5zm0 3c.6 0 1.1.2 1.5.6l.6-.6c-.6-.5-1.3-.9-2.1-.9s-1.5.4-2.1.9l.6.6c.4-.4.9-.6 1.5-.6zm0 2.5L10 12H8l1-1z"/></svg>
+            <svg width="20" height="10" viewBox="0 0 26 12" fill="none"><rect x="1" y="1" width="22" height="10" rx="2.5" stroke="currentColor" stroke-opacity="0.5"/><rect x="3" y="3" width="16" height="6" rx="1" fill="currentColor"/><rect x="24" y="4.5" width="2" height="3" rx="0.5" fill="currentColor" fill-opacity="0.5"/></svg>
+          </span>
+        </div>
+
+        <!-- mobile top bar -->
+        <div class="mobile-topbar">
+          <button class="icon-btn" onclick="toggleDrawer()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+          </button>
+          <div class="title">总览</div>
+          <button class="icon-btn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
+          </button>
+        </div>
+
+        <!-- content -->
+        <div class="app-content mobile">
+
+          <!-- section: stats -->
+          <div class="mobile-stat-grid">
+            <div class="glass stat-card">
+              <div class="label">总下注额</div>
+              <div class="value">12,580.5</div>
+            </div>
+            <div class="glass stat-card">
+              <div class="label">总赔付</div>
+              <div class="value accent">9,420.0</div>
+            </div>
+            <div class="glass stat-card">
+              <div class="label">平台盈利</div>
+              <div class="value red">+3,160.5</div>
+            </div>
+            <div class="glass stat-card">
+              <div class="label">已下注 / 中奖</div>
+              <div class="value">48 <span style="font-size:13px;color:var(--color-text-muted)">/</span> <span style="color:var(--color-accent)">22</span></div>
+            </div>
+          </div>
+
+          <!-- section: ranking -->
+          <div style="margin-top:20px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+              <h3 class="font-display" style="font-size:16px;font-weight:700;margin:0">用户排名</h3>
+              <span style="font-size:11px;color:var(--color-text-muted)">共 10 人</span>
+            </div>
+
+            <!-- sort chips -->
+            <div class="chip-row" style="margin-bottom:10px">
+              <span class="chip active">按盈亏</span>
+              <span class="chip">投注额</span>
+              <span class="chip">中奖额</span>
+              <span class="chip">中奖率</span>
+              <span class="chip">回报率</span>
+            </div>
+
+            <!-- ranking cards -->
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <div class="glass rank-card top1">
+                <div class="rank-no">1</div>
+                <div class="main">
+                  <div class="name-row">
+                    <div class="name">张三</div>
+                    <div class="profit pos">+1,250.5</div>
+                  </div>
+                  <div class="meta">
+                    <span>12 场</span><span>·</span>
+                    <span>中奖 58%</span><span>·</span>
+                    <span>投注 2,400</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="glass rank-card top2">
+                <div class="rank-no">2</div>
+                <div class="main">
+                  <div class="name-row">
+                    <div class="name">李四</div>
+                    <div class="profit pos">+980.0</div>
+                  </div>
+                  <div class="meta">
+                    <span>10 场</span><span>·</span>
+                    <span>中奖 50%</span><span>·</span>
+                    <span>投注 1,800</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="glass rank-card top3">
+                <div class="rank-no">3</div>
+                <div class="main">
+                  <div class="name-row">
+                    <div class="name">王五</div>
+                    <div class="profit pos">+720.3</div>
+                  </div>
+                  <div class="meta">
+                    <span>8 场</span><span>·</span>
+                    <span>中奖 62%</span><span>·</span>
+                    <span>投注 1,200</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="glass rank-card">
+                <div class="rank-no">4</div>
+                <div class="main">
+                  <div class="name-row">
+                    <div class="name">赵六</div>
+                    <div class="profit pos">+450.8</div>
+                  </div>
+                  <div class="meta">
+                    <span>9 场</span><span>·</span>
+                    <span>中奖 44%</span><span>·</span>
+                    <span>投注 1,500</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="glass rank-card">
+                <div class="rank-no">5</div>
+                <div class="main">
+                  <div class="name-row">
+                    <div class="name">钱七</div>
+                    <div class="profit neg">−180.0</div>
+                  </div>
+                  <div class="meta">
+                    <span>7 场</span><span>·</span>
+                    <span>中奖 28%</span><span>·</span>
+                    <span>投注 900</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="glass rank-card">
+                <div class="rank-no">6</div>
+                <div class="main">
+                  <div class="name-row">
+                    <div class="name">孙八</div>
+                    <div class="profit neg">−320.5</div>
+                  </div>
+                  <div class="meta">
+                    <span>5 场</span><span>·</span>
+                    <span>中奖 20%</span><span>·</span>
+                    <span>投注 600</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- drawer overlay (hidden by default) -->
+        <div id="drawerOverlay" class="drawer-overlay" style="display:none" onclick="toggleDrawer()"></div>
+        <aside id="drawer" class="drawer" style="transform:translateX(-100%);transition:transform 0.25s ease-out">
+          <div class="drawer-head">
+            <div class="brand"><span style="color:#fff">嗨</span>起来</div>
+            <div class="sub">管理后台 · v1.0</div>
+          </div>
+          <nav class="drawer-nav">
+            <a class="active" href="#">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+              总览
+            </a>
+            <a href="02-bet-entry.html">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>
+              下注管理
+            </a>
+            <a href="03-bet-details.html">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M8 13h2"/><path d="M14 13h2"/></svg>
+              下注详情
+            </a>
+            <a href="04-players.html">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+              玩家管理
+            </a>
+            <a href="05-tournaments.html">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/></svg>
+              赛事管理
+            </a>
+            <a href="06-results.html">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="m9 15 2 2 4-4"/></svg>
+              赛果查看
+            </a>
+            <a href="07-redemptions.html">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>
+              兑奖管理
+            </a>
+          </nav>
+          <div class="drawer-foot">
+            <a href="#" style="color:inherit;text-decoration:none">← 返回玩家端</a>
+          </div>
+        </aside>
+
+        <div class="phone-home"></div>
+      </div>
+    </div>
+    <div class="anno-row">
+      <span class="anno">点击左上角汉堡查看抽屉</span>
+    </div>
+  </div>
+
+  <!-- ============ BROWSER (WEB) ============ -->
+  <div>
+    <div class="frame-label">Web · 1280px+</div>
+    <div class="browser">
+      <div class="browser-bar">
+        <div class="browser-dots"><span></span><span></span><span></span></div>
+        <div class="browser-url">localhost:3001/admin</div>
+      </div>
+      <div class="browser-viewport">
+        <div class="app-shell">
+          <!-- sidebar -->
+          <aside class="sidebar">
+            <div class="sidebar-brand">
+              <span class="accent">嗨</span>起来<span class="tag">管理后台</span>
+            </div>
+            <nav class="sidebar-nav">
+              <a class="active" href="#">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                总览
+              </a>
+              <a href="02-bet-entry.html">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>
+                下注管理
+              </a>
+              <a href="03-bet-details.html">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>
+                下注详情
+              </a>
+              <a href="04-players.html">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                玩家管理
+              </a>
+              <a href="05-tournaments.html">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/></svg>
+                赛事管理
+              </a>
+              <a href="06-results.html">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="m9 15 2 2 4-4"/></svg>
+                赛果查看
+              </a>
+              <a href="07-redemptions.html">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>
+                兑奖管理
+              </a>
+            </nav>
+            <div class="sidebar-footer"><a href="#" style="color:inherit;text-decoration:none">← 返回玩家端</a></div>
+          </aside>
+
+          <!-- main content -->
+          <main class="app-content">
+            <h2 class="font-display" style="font-size:20px;font-weight:700;margin:0 0 4px">总览</h2>
+            <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 20px">实时数据看板，掌握平台运营情况</p>
+
+            <!-- stat grid -->
+            <div class="desktop-stat-grid">
+              <div class="glass stat-card">
+                <div class="label">总下注额</div>
+                <div class="value">12,580.5</div>
+              </div>
+              <div class="glass stat-card">
+                <div class="label">总赔付</div>
+                <div class="value accent">9,420.0</div>
+              </div>
+              <div class="glass stat-card">
+                <div class="label">平台盈利</div>
+                <div class="value red">+3,160.5</div>
+              </div>
+            </div>
+            <div class="desktop-stat-grid">
+              <div class="glass stat-card">
+                <div class="label">已下注</div>
+                <div class="value">48</div>
+              </div>
+              <div class="glass stat-card">
+                <div class="label">已中奖</div>
+                <div class="value accent">22</div>
+              </div>
+              <div class="glass stat-card">
+                <div class="label">未中奖</div>
+                <div class="value">26</div>
+              </div>
+            </div>
+
+            <!-- ranking table -->
+            <div style="margin-top:24px">
+              <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:12px">
+                <div>
+                  <h3 class="font-display" style="font-size:16px;font-weight:700;margin:0">用户排名</h3>
+                  <p style="font-size:12px;color:var(--color-text-muted);margin:2px 0 0">点击表头按指标排序</p>
+                </div>
+                <span style="font-size:12px;color:var(--color-text-muted)">共 10 人</span>
+              </div>
+              <div class="glass" style="overflow:hidden">
+                <table class="tbl" style="min-width:780px">
+                  <thead>
+                    <tr>
+                      <th>排名</th>
+                      <th>昵称</th>
+                      <th class="num">投注额</th>
+                      <th class="num">中奖额</th>
+                      <th class="num">购买场次</th>
+                      <th class="num">中奖场次</th>
+                      <th class="num">投注盈亏 <span style="color:var(--color-accent)">↓</span></th>
+                      <th class="num">中奖率</th>
+                      <th class="num">回报率</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><span style="color:var(--color-gold-dim);font-weight:700">1</span></td>
+                      <td style="font-weight:600">张三</td>
+                      <td class="num">2,400.0</td>
+                      <td class="num" style="color:var(--color-red)">3,650.5</td>
+                      <td class="num">12</td>
+                      <td class="num">7</td>
+                      <td class="num" style="color:var(--color-red);font-weight:600">+1,250.5</td>
+                      <td class="num">58.3%</td>
+                      <td class="num" style="color:var(--color-accent)">152.1%</td>
+                    </tr>
+                    <tr>
+                      <td><span style="color:#a0a0a6;font-weight:700">2</span></td>
+                      <td style="font-weight:600">李四</td>
+                      <td class="num">1,800.0</td>
+                      <td class="num" style="color:var(--color-red)">2,780.0</td>
+                      <td class="num">10</td>
+                      <td class="num">5</td>
+                      <td class="num" style="color:var(--color-red);font-weight:600">+980.0</td>
+                      <td class="num">50.0%</td>
+                      <td class="num" style="color:var(--color-accent)">154.4%</td>
+                    </tr>
+                    <tr>
+                      <td><span style="color:#cd7f32;font-weight:700">3</span></td>
+                      <td style="font-weight:600">王五</td>
+                      <td class="num">1,200.0</td>
+                      <td class="num" style="color:var(--color-red)">1,920.3</td>
+                      <td class="num">8</td>
+                      <td class="num">5</td>
+                      <td class="num" style="color:var(--color-red);font-weight:600">+720.3</td>
+                      <td class="num">62.5%</td>
+                      <td class="num" style="color:var(--color-accent)">160.0%</td>
+                    </tr>
+                    <tr>
+                      <td><span style="color:var(--color-text-muted)">4</span></td>
+                      <td style="font-weight:600">赵六</td>
+                      <td class="num">1,500.0</td>
+                      <td class="num" style="color:var(--color-red)">1,950.8</td>
+                      <td class="num">9</td>
+                      <td class="num">4</td>
+                      <td class="num" style="color:var(--color-red);font-weight:600">+450.8</td>
+                      <td class="num">44.4%</td>
+                      <td class="num">130.1%</td>
+                    </tr>
+                    <tr>
+                      <td><span style="color:var(--color-text-muted)">5</span></td>
+                      <td style="font-weight:600">钱七</td>
+                      <td class="num">900.0</td>
+                      <td class="num" style="color:var(--color-emerald)">720.0</td>
+                      <td class="num">7</td>
+                      <td class="num">2</td>
+                      <td class="num" style="color:var(--color-emerald);font-weight:600">−180.0</td>
+                      <td class="num">28.6%</td>
+                      <td class="num">80.0%</td>
+                    </tr>
+                    <tr>
+                      <td><span style="color:var(--color-text-muted)">6</span></td>
+                      <td style="font-weight:600">孙八</td>
+                      <td class="num">600.0</td>
+                      <td class="num" style="color:var(--color-emerald)">279.5</td>
+                      <td class="num">5</td>
+                      <td class="num">1</td>
+                      <td class="num" style="color:var(--color-emerald);font-weight:600">−320.5</td>
+                      <td class="num">20.0%</td>
+                      <td class="num">46.6%</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    </div>
+    <div class="anno-row">
+      <span class="anno">Web 端基本保留现状，仅微调间距/层级</span>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function toggleDrawer() {
+  const overlay = document.getElementById('drawerOverlay');
+  const drawer = document.getElementById('drawer');
+  const isVisible = drawer.style.transform === 'translateX(0%)';
+  if (isVisible) {
+    drawer.style.transform = 'translateX(-100%)';
+    overlay.style.display = 'none';
+  } else {
+    drawer.style.transform = 'translateX(0%)';
+    overlay.style.display = 'block';
+  }
+}
+</script>
+</body>
+</html>

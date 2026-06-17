@@ -7,6 +7,7 @@ import {
   MARKET_NAMES,
   formatOptionLabel,
 } from "@/lib/bet-display";
+import { AdminMobileTopBar } from "@/components/admin/mobile-nav";
 
 interface OddsRow {
   id: number;
@@ -137,10 +138,14 @@ export default function BetDetailsPage() {
 
   return (
     <div className="w-full">
-      <h2 className="font-display text-lg font-semibold mb-1">下注详情</h2>
-      <p className="text-text-muted text-sm mb-4">点击左侧下注，右侧查看对应赛事详情</p>
+      <AdminMobileTopBar title="下注详情" />
 
-      <div className="flex items-center gap-3 mb-4">
+      <div className="hidden lg:block mb-1">
+        <h2 className="font-display text-lg font-semibold">下注详情</h2>
+        <p className="text-text-muted text-sm">点击左侧下注，右侧查看对应赛事详情</p>
+      </div>
+
+      <div className="flex items-center gap-3 mb-4 mt-3 lg:mt-4">
         <div className="flex gap-1.5 overflow-x-auto pb-1">
           {([
             { key: "ALL", label: "全部" },
@@ -185,7 +190,11 @@ export default function BetDetailsPage() {
         <div className="text-text-muted text-sm py-8 text-center">加载中...</div>
       ) : (
         <div className="grid gap-4 lg:grid-cols-2 items-start">
-          <div className="space-y-2 min-w-0">
+          <div
+            className={`space-y-2 min-w-0 ${
+              selectedBetId !== null ? "hidden lg:block" : "block"
+            }`}
+          >
             {filtered.length === 0 ? (
               <div className="text-text-muted text-sm py-8 text-center">暂无下注记录</div>
             ) : (
@@ -246,12 +255,32 @@ export default function BetDetailsPage() {
             )}
           </div>
 
-          <MatchBetOverview
-            groups={matchGroups}
-            selectedOptionKey={selectedOverviewOption}
-            onSelectOption={setSelectedOverviewOption}
-            hasBets={filtered.length > 0}
-          />
+          <div
+            className={`min-w-0 ${
+              selectedBetId !== null ? "block" : "hidden lg:block"
+            }`}
+          >
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedBetId(null);
+                setSelectedOverviewOption(null);
+              }}
+              className="lg:hidden mb-3 inline-flex items-center gap-1 text-sm text-text-secondary hover:text-accent"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M19 12H5" />
+                <path d="M12 19l-7-7 7-7" />
+              </svg>
+              返回列表
+            </button>
+            <MatchBetOverview
+              groups={matchGroups}
+              selectedOptionKey={selectedOverviewOption}
+              onSelectOption={setSelectedOverviewOption}
+              hasBets={filtered.length > 0}
+            />
+          </div>
         </div>
       )}
     </div>
@@ -462,8 +491,8 @@ function OverviewOddsGrid({
 }
 
 function getOverviewOddsGridClass(market: string) {
-  if (market === "TOTAL_GOALS") return "grid grid-cols-8 gap-1";
-  if (market === "CORRECT_SCORE") return "grid grid-cols-6 gap-1";
+  if (market === "TOTAL_GOALS") return "grid grid-cols-4 lg:grid-cols-8 gap-1";
+  if (market === "CORRECT_SCORE") return "grid grid-cols-4 lg:grid-cols-6 gap-1";
   return "grid grid-cols-3 gap-1.5";
 }
 

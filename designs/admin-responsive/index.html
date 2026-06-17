@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Admin 后台 · 移动端 / Web 端兼容设计稿</title>
+<link rel="stylesheet" href="styles.css" />
+<style>
+  .hero {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 56px 24px 32px;
+  }
+  .hero h1 {
+    font-family: var(--font-display);
+    font-size: 44px;
+    font-weight: 700;
+    margin: 0 0 8px;
+    letter-spacing: 0.5px;
+  }
+  .hero h1 .accent { color: var(--color-accent); }
+  .hero p {
+    font-size: 15px;
+    color: var(--color-text-secondary);
+    margin: 0;
+    max-width: 640px;
+    line-height: 1.7;
+  }
+  .principles {
+    max-width: 1200px;
+    margin: 32px auto 0;
+    padding: 0 24px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 14px;
+  }
+  .principle {
+    padding: 16px 18px;
+  }
+  .principle .num {
+    font-family: var(--font-display);
+    font-size: 14px;
+    color: var(--color-accent);
+    font-weight: 600;
+    letter-spacing: 1px;
+  }
+  .principle .title {
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 600;
+    margin: 4px 0 6px;
+  }
+  .principle .desc {
+    font-size: 13px;
+    color: var(--color-text-secondary);
+    line-height: 1.6;
+  }
+  .pages {
+    max-width: 1200px;
+    margin: 56px auto 80px;
+    padding: 0 24px;
+  }
+  .section-title {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 700;
+    margin: 0 0 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-title::before {
+    content: '';
+    width: 4px;
+    height: 18px;
+    background: var(--color-accent);
+    border-radius: 2px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+  }
+  .page-card {
+    padding: 20px;
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .page-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(31, 37, 48, 0.08);
+  }
+  .page-card .num {
+    font-family: var(--font-display);
+    font-size: 13px;
+    color: var(--color-text-muted);
+    letter-spacing: 1.5px;
+    font-weight: 600;
+  }
+  .page-card .title {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+  .page-card .desc {
+    font-size: 13px;
+    color: var(--color-text-secondary);
+    line-height: 1.6;
+    flex: 1;
+  }
+  .page-card .pain {
+    font-size: 11px;
+    color: var(--color-red);
+    background: var(--color-bg-hover);
+    padding: 4px 8px;
+    border-radius: 4px;
+    display: inline-block;
+    width: fit-content;
+  }
+  .page-card .arrow {
+    font-family: var(--font-display);
+    font-size: 13px;
+    color: var(--color-accent);
+    font-weight: 600;
+    margin-top: 4px;
+  }
+  .tokens {
+    max-width: 1200px;
+    margin: 56px auto;
+    padding: 0 24px;
+  }
+  .token-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 8px;
+  }
+  .token {
+    padding: 12px;
+    border-radius: 10px;
+    background: var(--color-bg-primary);
+    border: 1px solid var(--color-border);
+  }
+  .token .swatch {
+    width: 100%;
+    height: 40px;
+    border-radius: 6px;
+    border: 1px solid rgba(0,0,0,0.05);
+  }
+  .token .name {
+    font-size: 11px;
+    color: var(--color-text-secondary);
+    margin-top: 6px;
+    font-family: ui-monospace, monospace;
+  }
+</style>
+</head>
+<body>
+<section class="hero">
+  <h1><span class="accent">嗨</span>起来 · 管理后台响应式设计稿</h1>
+  <p>7 个 admin 页面在手机 (390px) 和 Web (1280px+) 两种尺寸下的布局对照。手机端的核心改造：表格 → 卡片列表、双栏 → drill-down、弹窗 → 底部 sheet、宽按钮组 → 折叠菜单。导航采用「汉堡 + 全屏抽屉」。</p>
+</section>
+
+<section class="principles">
+  <div class="glass principle">
+    <div class="num">01</div>
+    <div class="title">表格卡片化</div>
+    <div class="desc">9 列排名表、玩家表等宽表格全部改为竖向卡片，关键信息前置，次要信息折叠。</div>
+  </div>
+  <div class="glass principle">
+    <div class="num">02</div>
+    <div class="title">双栏改 drill-down</div>
+    <div class="desc">下注详情、赛果查看等左右双栏改为列表 → 详情的两步导航，返回键回到列表。</div>
+  </div>
+  <div class="glass principle">
+    <div class="num">03</div>
+    <div class="title">弹窗底部化</div>
+    <div class="desc">编辑赔率、新建玩家、确认操作等弹窗在移动端改为从底部滑入的 sheet，单手可触达。</div>
+  </div>
+  <div class="glass principle">
+    <div class="num">04</div>
+    <div class="title">网格自适应</div>
+    <div class="desc">7/8 列赔率网格改为 3 列 + 折叠/横向 snap 滚动；3-4 列统计卡改 2 列。</div>
+  </div>
+</section>
+
+<section class="pages">
+  <h2 class="section-title">页面设计稿</h2>
+  <div class="grid">
+    <a class="glass page-card" href="01-dashboard.html">
+      <div class="num">01</div>
+      <div class="title">总览 Dashboard</div>
+      <div class="desc">统计卡片 + 用户排名表。排名表改卡片列表，按指标排序改为 chip 横滚切换。</div>
+      <span class="pain">9 列表 min-w-980</span>
+      <div class="arrow">查看对比 →</div>
+    </a>
+    <a class="glass page-card" href="02-bet-entry.html">
+      <div class="num">02</div>
+      <div class="title">下注管理 Bet Entry</div>
+      <div class="desc">管理员代下注。移动端改 segment tab 切换列表/新建，新建走全屏分步流程。</div>
+      <span class="pain">右栏 w-800 + 7/8 列赔率</span>
+      <div class="arrow">查看对比 →</div>
+    </a>
+    <a class="glass page-card" href="03-bet-details.html">
+      <div class="num">03</div>
+      <div class="title">下注详情 Bet Details</div>
+      <div class="desc">下注列表 + 赛事概览。移动端列表点进入详情页，详情页显示该场所有玩家的下注。</div>
+      <span class="pain">左右双栏挤压</span>
+      <div class="arrow">查看对比 →</div>
+    </a>
+    <a class="glass page-card" href="04-players.html">
+      <div class="num">04</div>
+      <div class="title">玩家管理 Players</div>
+      <div class="desc">玩家 CRUD。9 列表改卡片，4 个操作按钮收进底部 action sheet。</div>
+      <span class="pain">9 列表 + 每行 4 按钮</span>
+      <div class="arrow">查看对比 →</div>
+    </a>
+    <a class="glass page-card" href="05-tournaments.html">
+      <div class="num">05</div>
+      <div class="title">赛事管理 Tournaments</div>
+      <div class="desc">最复杂的一页。5 头部按钮折叠为「主操作 + 更多」，赔率编辑改全屏 + 折叠市场。</div>
+      <span class="pain">5 头部按钮 + 大赔率弹窗</span>
+      <div class="arrow">查看对比 →</div>
+    </a>
+    <a class="glass page-card" href="06-results.html">
+      <div class="num">06</div>
+      <div class="title">赛果查看 Results</div>
+      <div class="desc">只读查看。master-detail 改 drill-down，赛事详情包含比分、市场中奖选项、下注明细。</div>
+      <span class="pain">w-72 master-detail</span>
+      <div class="arrow">查看对比 →</div>
+    </a>
+    <a class="glass page-card" href="07-redemptions.html">
+      <div class="num">07</div>
+      <div class="title">兑奖管理 Redemptions</div>
+      <div class="desc">已自动发放的中奖记录。本身已移动友好，仅微调金额行的 2x2 网格。</div>
+      <span class="pain" style="color: var(--color-emerald); background: rgba(16,185,129,0.08); border-color: rgba(16,185,129,0.2);">已基本就绪</span>
+      <div class="arrow">查看对比 →</div>
+    </a>
+  </div>
+</section>
+
+<section class="tokens">
+  <h2 class="section-title">设计 Token</h2>
+  <div class="token-grid">
+    <div class="token"><div class="swatch" style="background:#e60012"></div><div class="name">accent #e60012</div></div>
+    <div class="token"><div class="swatch" style="background:#f4b42a"></div><div class="name">gold #f4b42a</div></div>
+    <div class="token"><div class="swatch" style="background:#1f2530"></div><div class="name">text-primary</div></div>
+    <div class="token"><div class="swatch" style="background:#667085"></div><div class="name">text-secondary</div></div>
+    <div class="token"><div class="swatch" style="background:#a0a7b2"></div><div class="name">text-muted</div></div>
+    <div class="token"><div class="swatch" style="background:#f5f6fa"></div><div class="name">bg-deep</div></div>
+    <div class="token"><div class="swatch" style="background:#ffffff"></div><div class="name">bg-primary</div></div>
+    <div class="token"><div class="swatch" style="background:#f8f9fc"></div><div class="name">bg-surface</div></div>
+    <div class="token"><div class="swatch" style="background:#eef1f6"></div><div class="name">bg-elevated</div></div>
+  </div>
+</section>
+</body>
+</html>

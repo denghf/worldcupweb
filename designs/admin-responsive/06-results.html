@@ -1,0 +1,475 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>06 · 赛果查看 Results · 响应式设计稿</title>
+<link rel="stylesheet" href="styles.css" />
+<style>
+  .match-list-item {
+    padding: 12px 14px; display: flex; align-items: center; gap: 10px;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .match-list-item.selected { box-shadow: inset 3px 0 0 var(--color-accent); background: var(--color-bg-surface); }
+  .match-list-item .m-time {
+    font-family: var(--font-display); font-size: 11px; color: var(--color-text-muted);
+    font-variant-numeric: tabular-nums; flex-shrink: 0; width: 50px;
+  }
+  .match-list-item .m-teams { flex: 1; min-width: 0; }
+  .match-list-item .m-name {
+    font-size: 13px; font-weight: 600;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .match-list-item .m-score {
+    font-family: var(--font-display); font-weight: 700; font-size: 12px;
+    color: var(--color-accent); margin-top: 2px;
+  }
+
+  .score-card {
+    padding: 14px 16px; text-align: center;
+  }
+  .score-card .league { font-size: 11px; color: var(--color-text-muted); }
+  .score-card .teams {
+    display: flex; align-items: center; justify-content: center; gap: 12px;
+    margin: 8px 0;
+  }
+  .score-card .team { font-family: var(--font-display); font-size: 18px; font-weight: 700; }
+  .score-card .score {
+    font-family: var(--font-display); font-size: 32px; font-weight: 700;
+    color: var(--color-accent); padding: 0 12px;
+  }
+  .score-card .sub-scores {
+    display: flex; justify-content: center; gap: 12px;
+    font-size: 11px; color: var(--color-text-muted);
+  }
+
+  .market-result {
+    padding: 10px 14px; border-top: 1px solid var(--color-border);
+  }
+  .market-result .m-title {
+    font-size: 12px; color: var(--color-text-muted); margin-bottom: 6px;
+  }
+  .market-result .options {
+    display: flex; gap: 4px; flex-wrap: wrap;
+  }
+  .market-result .opt {
+    padding: 4px 8px; border-radius: 5px; font-size: 11px;
+    background: var(--color-bg-surface); color: var(--color-text-secondary);
+    border: 1px solid var(--color-border);
+    font-family: var(--font-display); font-weight: 600;
+  }
+  .market-result .opt.win {
+    background: rgba(230,0,18,0.1); color: var(--color-accent);
+    border-color: rgba(230,0,18,0.4);
+  }
+
+  .summary-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;
+  }
+  .summary-grid .s-cell {
+    padding: 10px 12px; background: var(--color-bg-surface); border-radius: 8px;
+  }
+  .summary-grid .s-cell .l { font-size: 11px; color: var(--color-text-muted); }
+  .summary-grid .s-cell .v {
+    font-family: var(--font-display); font-weight: 700; font-size: 16px;
+  }
+  .summary-grid .s-cell .v.accent { color: var(--color-accent); }
+</style>
+</head>
+<body class="mockup-canvas">
+
+<header class="mockup-header">
+  <div>
+    <h1 class="mockup-title"><span class="accent">06</span> · 赛果查看 Results</h1>
+    <p class="mockup-subtitle">master-detail → drill-down；列表点击进入详情；详情包含比分 + 中奖选项 + 下注明细</p>
+  </div>
+  <a class="btn btn-ghost btn-sm" href="index.html">← 返回索引</a>
+</header>
+
+<div class="mockup-frame-row triple">
+
+  <!-- ============ PHONE 1: LIST ============ -->
+  <div>
+    <div class="frame-label">Mobile · 赛事列表</div>
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <div class="phone-statusbar">
+          <span>9:41</span>
+          <span class="right">
+            <svg width="14" height="10" viewBox="0 0 18 12" fill="currentColor"><path d="M1 11h2V5H1v6zm4 0h2V1H5v10zm4 0h2V7H9v4zm4 0h2V3h-2v8zm4 0h2V5h-2v6z"/></svg>
+            <svg width="20" height="10" viewBox="0 0 26 12" fill="none"><rect x="1" y="1" width="22" height="10" rx="2.5" stroke="currentColor" stroke-opacity="0.5"/><rect x="3" y="3" width="16" height="6" rx="1" fill="currentColor"/></svg>
+          </span>
+        </div>
+        <div class="mobile-topbar">
+          <button class="icon-btn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+          <div class="title">赛果查看</div>
+          <button class="icon-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-9-9"/><path d="M21 3v6h-6"/></svg></button>
+        </div>
+
+        <div class="app-content mobile">
+          <!-- date filter -->
+          <div style="display:flex;gap:6px;margin-bottom:10px">
+            <input class="input" type="date" value="2026-06-15" style="flex:1;font-size:12px" />
+            <button class="btn btn-ghost btn-sm">清除</button>
+          </div>
+          <input class="input" placeholder="搜索球队..." style="margin-bottom:12px;font-size:12px" />
+
+          <div class="glass" style="overflow:hidden">
+            <a class="match-list-item selected" href="#r-detail" style="text-decoration:none;color:inherit">
+              <div class="m-time">19:00</div>
+              <div class="m-teams">
+                <div class="m-name">阿根廷 vs 法国</div>
+                <div class="m-score">2 : 1</div>
+              </div>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+            </a>
+            <a class="match-list-item" href="#r-detail" style="text-decoration:none;color:inherit">
+              <div class="m-time">22:00</div>
+              <div class="m-teams">
+                <div class="m-name">英格兰 vs 西班牙</div>
+                <div class="m-score">1 : 1 (点球 4:3)</div>
+              </div>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+            </a>
+            <a class="match-list-item" href="#r-detail" style="text-decoration:none;color:inherit">
+              <div class="m-time">15:00</div>
+              <div class="m-teams">
+                <div class="m-name">德国 vs 墨西哥</div>
+                <div class="m-score">3 : 0</div>
+              </div>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+            </a>
+            <a class="match-list-item" href="#r-detail" style="text-decoration:none;color:inherit">
+              <div class="m-time">18:00</div>
+              <div class="m-teams">
+                <div class="m-name">比利时 vs 加拿大</div>
+                <div class="m-score">2 : 2</div>
+              </div>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+            </a>
+            <a class="match-list-item" href="#r-detail" style="text-decoration:none;color:inherit">
+              <div class="m-time">21:00</div>
+              <div class="m-teams">
+                <div class="m-name">葡萄牙 vs 摩洛哥</div>
+                <div class="m-score">1 : 0</div>
+              </div>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+            </a>
+          </div>
+        </div>
+        <div class="phone-home"></div>
+      </div>
+    </div>
+    <div class="anno-row">
+      <span class="anno">第一项为「选中态」</span>
+    </div>
+  </div>
+
+  <!-- ============ PHONE 2: DETAIL ============ -->
+  <div id="r-detail">
+    <div class="frame-label">Mobile · 详情（点击后）</div>
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <div class="phone-statusbar">
+          <span>9:41</span>
+          <span class="right">
+            <svg width="14" height="10" viewBox="0 0 18 12" fill="currentColor"><path d="M1 11h2V5H1v6zm4 0h2V1H5v10zm4 0h2V7H9v4zm4 0h2V3h-2v8zm4 0h2V5h-2v6z"/></svg>
+            <svg width="20" height="10" viewBox="0 0 26 12" fill="none"><rect x="1" y="1" width="22" height="10" rx="2.5" stroke="currentColor" stroke-opacity="0.5"/><rect x="3" y="3" width="16" height="6" rx="1" fill="currentColor"/></svg>
+          </span>
+        </div>
+        <div class="mobile-topbar">
+          <button class="icon-btn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
+          <div class="title">赛果详情</div>
+          <button class="icon-btn"></button>
+        </div>
+
+        <div class="app-content mobile" style="padding:0">
+          <!-- score card -->
+          <div class="glass score-card" style="margin:12px;border-radius:14px">
+            <div class="league">2026 世界杯 · 小组赛</div>
+            <div class="teams">
+              <div style="text-align:center;flex:1">
+                <div class="team">阿根廷</div>
+              </div>
+              <div class="score">2 : 1</div>
+              <div style="text-align:center;flex:1">
+                <div class="team">法国</div>
+              </div>
+            </div>
+            <div class="sub-scores">
+              <span>半场 1:0</span>
+              <span>·</span>
+              <span>06-15 19:00</span>
+            </div>
+          </div>
+
+          <!-- market results -->
+          <div class="glass" style="margin:0 12px 12px;overflow:hidden">
+            <div style="padding:10px 14px;border-bottom:1px solid var(--color-border)">
+              <h3 class="font-display" style="font-size:14px;font-weight:700;margin:0">中奖选项</h3>
+            </div>
+            <div class="market-result">
+              <div class="m-title">胜平负</div>
+              <div class="options">
+                <span class="opt win">主胜 ✓</span>
+                <span class="opt">平</span>
+                <span class="opt">客胜</span>
+              </div>
+            </div>
+            <div class="market-result">
+              <div class="m-title">让球胜平负 (-1)</div>
+              <div class="options">
+                <span class="opt">主胜</span>
+                <span class="opt win">平 ✓</span>
+                <span class="opt">客胜</span>
+              </div>
+            </div>
+            <div class="market-result">
+              <div class="m-title">总进球数</div>
+              <div class="options">
+                <span class="opt win">3 球 ✓</span>
+              </div>
+            </div>
+            <div class="market-result">
+              <div class="m-title">猜比分</div>
+              <div class="options">
+                <span class="opt win">2:1 ✓</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- summary -->
+          <div style="padding:0 12px 12px">
+            <h3 class="font-display" style="font-size:14px;font-weight:700;margin:0 0 8px">本场汇总</h3>
+            <div class="summary-grid">
+              <div class="s-cell">
+                <div class="l">下注人数</div>
+                <div class="v">6</div>
+              </div>
+              <div class="s-cell">
+                <div class="l">下注总额</div>
+                <div class="v">1,200</div>
+              </div>
+              <div class="s-cell">
+                <div class="l">中奖人数</div>
+                <div class="v accent">3</div>
+              </div>
+              <div class="s-cell">
+                <div class="l">派奖总额</div>
+                <div class="v accent">1,860</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- bets -->
+          <div style="padding:0 12px 12px">
+            <h3 class="font-display" style="font-size:14px;font-weight:700;margin:0 0 8px">下注明细 · 6 条</h3>
+            <div style="display:flex;flex-direction:column;gap:4px">
+              <div style="padding:8px 10px;background:var(--color-bg-primary);border:1px solid rgba(230,0,18,0.25);border-radius:6px;font-size:11px">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">
+                  <span style="font-weight:600">张三</span>
+                  <span class="badge badge-won" style="font-size:10px">中奖 +680</span>
+                </div>
+                <div style="color:var(--color-text-secondary)">胜平负 · 主胜 @ 2.85 · 下注 200</div>
+              </div>
+              <div style="padding:8px 10px;background:var(--color-bg-primary);border:1px solid var(--color-border);border-radius:6px;font-size:11px">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">
+                  <span style="font-weight:600">李四</span>
+                  <span class="badge badge-lost" style="font-size:10px">未中</span>
+                </div>
+                <div style="color:var(--color-text-secondary)">胜平负 · 平 @ 3.20 · 下注 150</div>
+              </div>
+              <div style="padding:8px 10px;background:var(--color-bg-primary);border:1px solid rgba(230,0,18,0.25);border-radius:6px;font-size:11px">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">
+                  <span style="font-weight:600">王五</span>
+                  <span class="badge badge-won" style="font-size:10px">中奖 +1,180</span>
+                </div>
+                <div style="color:var(--color-text-secondary)">猜比分 · 2:1 @ 9.5 · 下注 100</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="phone-home"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ BROWSER ============ -->
+  <div>
+    <div class="frame-label">Web · 1280px+</div>
+    <div class="browser">
+      <div class="browser-bar">
+        <div class="browser-dots"><span></span><span></span><span></span></div>
+        <div class="browser-url">localhost:3001/admin/results</div>
+      </div>
+      <div class="browser-viewport">
+        <div class="app-shell">
+          <aside class="sidebar">
+            <div class="sidebar-brand"><span class="accent">嗨</span>起来<span class="tag">管理后台</span></div>
+            <nav class="sidebar-nav">
+              <a href="01-dashboard.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>总览</a>
+              <a href="02-bet-entry.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>下注管理</a>
+              <a href="03-bet-details.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>下注详情</a>
+              <a href="04-players.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>玩家管理</a>
+              <a href="05-tournaments.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/></svg>赛事管理</a>
+              <a class="active" href="#"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="m9 15 2 2 4-4"/></svg>赛果查看</a>
+              <a href="07-redemptions.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>兑奖管理</a>
+            </nav>
+            <div class="sidebar-footer"><a href="#" style="color:inherit;text-decoration:none">← 返回玩家端</a></div>
+          </aside>
+
+          <main class="app-content">
+            <h2 class="font-display" style="font-size:20px;font-weight:700;margin:0 0 4px">赛果查看</h2>
+            <p style="font-size:13px;color:var(--color-text-muted);margin:0 0 16px">只读 · 比分 / 中奖选项 / 下注结算</p>
+
+            <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+              <input class="input" type="date" value="2026-06-15" style="width:auto" />
+              <input class="input" placeholder="搜索球队..." style="width:200px" />
+              <button class="btn btn-ghost btn-sm">清除筛选</button>
+            </div>
+
+            <div style="display:grid;grid-template-columns:280px minmax(0,1fr);gap:16px;align-items:flex-start">
+
+              <!-- left: match list -->
+              <aside class="glass" style="overflow:hidden;position:sticky;top:24px">
+                <div class="match-list-item selected">
+                  <div class="m-time">19:00</div>
+                  <div class="m-teams">
+                    <div class="m-name">阿根廷 vs 法国</div>
+                    <div class="m-score">2 : 1</div>
+                  </div>
+                </div>
+                <div class="match-list-item">
+                  <div class="m-time">22:00</div>
+                  <div class="m-teams">
+                    <div class="m-name">英格兰 vs 西班牙</div>
+                    <div class="m-score">1:1 (4:3)</div>
+                  </div>
+                </div>
+                <div class="match-list-item">
+                  <div class="m-time">15:00</div>
+                  <div class="m-teams">
+                    <div class="m-name">德国 vs 墨西哥</div>
+                    <div class="m-score">3 : 0</div>
+                  </div>
+                </div>
+                <div class="match-list-item">
+                  <div class="m-time">18:00</div>
+                  <div class="m-teams">
+                    <div class="m-name">比利时 vs 加拿大</div>
+                    <div class="m-score">2 : 2</div>
+                  </div>
+                </div>
+                <div class="match-list-item">
+                  <div class="m-time">21:00</div>
+                  <div class="m-teams">
+                    <div class="m-name">葡萄牙 vs 摩洛哥</div>
+                    <div class="m-score">1 : 0</div>
+                  </div>
+                </div>
+              </aside>
+
+              <!-- right: detail -->
+              <div style="display:flex;flex-direction:column;gap:12px">
+                <div class="glass score-card">
+                  <div class="league">2026 世界杯 · 小组赛</div>
+                  <div class="teams">
+                    <div style="text-align:center;flex:1"><div class="team">阿根廷</div></div>
+                    <div class="score">2 : 1</div>
+                    <div style="text-align:center;flex:1"><div class="team">法国</div></div>
+                  </div>
+                  <div class="sub-scores">
+                    <span>半场 1:0</span>
+                    <span>·</span>
+                    <span>06-15 19:00</span>
+                  </div>
+                </div>
+
+                <div class="glass" style="overflow:hidden">
+                  <div style="padding:12px 16px;border-bottom:1px solid var(--color-border)">
+                    <h3 class="font-display" style="font-size:15px;font-weight:700;margin:0">中奖选项</h3>
+                  </div>
+                  <div style="display:grid;grid-template-columns:repeat(2,1fr)">
+                    <div class="market-result" style="border-right:1px solid var(--color-border)">
+                      <div class="m-title">胜平负</div>
+                      <div class="options"><span class="opt win">主胜 ✓</span></div>
+                    </div>
+                    <div class="market-result">
+                      <div class="m-title">让球 (-1)</div>
+                      <div class="options"><span class="opt win">平 ✓</span></div>
+                    </div>
+                    <div class="market-result" style="border-right:1px solid var(--color-border);border-top:1px solid var(--color-border)">
+                      <div class="m-title">总进球</div>
+                      <div class="options"><span class="opt win">3 球 ✓</span></div>
+                    </div>
+                    <div class="market-result" style="border-top:1px solid var(--color-border)">
+                      <div class="m-title">猜比分</div>
+                      <div class="options"><span class="opt win">2:1 ✓</span></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+                  <div class="summary-grid" style="grid-template-columns:1fr"><div class="s-cell"><div class="l">下注人数</div><div class="v">6</div></div></div>
+                  <div class="summary-grid" style="grid-template-columns:1fr"><div class="s-cell"><div class="l">下注总额</div><div class="v">1,200</div></div></div>
+                  <div class="summary-grid" style="grid-template-columns:1fr"><div class="s-cell"><div class="l">中奖人数</div><div class="v accent">3</div></div></div>
+                  <div class="summary-grid" style="grid-template-columns:1fr"><div class="s-cell"><div class="l">派奖总额</div><div class="v accent">1,860</div></div></div>
+                </div>
+
+                <div class="glass" style="overflow:hidden">
+                  <div style="padding:12px 16px;border-bottom:1px solid var(--color-border);display:flex;justify-content:space-between;align-items:center">
+                    <h3 class="font-display" style="font-size:15px;font-weight:700;margin:0">下注明细</h3>
+                    <span style="font-size:11px;color:var(--color-text-muted)">共 6 条</span>
+                  </div>
+                  <table class="tbl">
+                    <thead>
+                      <tr>
+                        <th>玩家</th>
+                        <th>玩法</th>
+                        <th class="num">赔率</th>
+                        <th class="num">下注</th>
+                        <th class="num">派奖</th>
+                        <th>状态</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td style="font-weight:600">张三</td>
+                        <td>胜平负 · 主胜</td>
+                        <td class="num">2.85</td>
+                        <td class="num">200</td>
+                        <td class="num" style="color:var(--color-accent);font-weight:600">+570</td>
+                        <td><span class="badge badge-won">中奖</span></td>
+                      </tr>
+                      <tr>
+                        <td style="font-weight:600">李四</td>
+                        <td>胜平负 · 平</td>
+                        <td class="num">3.20</td>
+                        <td class="num">150</td>
+                        <td class="num" style="color:var(--color-text-muted)">—</td>
+                        <td><span class="badge badge-lost">未中</span></td>
+                      </tr>
+                      <tr>
+                        <td style="font-weight:600">王五</td>
+                        <td>猜比分 · 2:1</td>
+                        <td class="num">9.50</td>
+                        <td class="num">100</td>
+                        <td class="num" style="color:var(--color-accent);font-weight:600">+950</td>
+                        <td><span class="badge badge-won">中奖</span></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { AdminMobileTopBar } from "@/components/admin/mobile-nav";
 
 interface WinRecord {
   id: number;
@@ -37,10 +38,14 @@ export default function RedemptionsPage() {
 
   return (
     <div className="max-w-4xl">
-      <h2 className="font-display text-lg font-semibold mb-1">兑奖管理</h2>
-      <p className="text-text-muted text-sm mb-4">管理中奖玩家的兑付情况</p>
+      <AdminMobileTopBar title="兑奖管理" />
 
-      <div className="grid grid-cols-2 gap-3 mb-6">
+      <div className="hidden md:block mb-4">
+        <h2 className="font-display text-lg font-semibold mb-1">兑奖管理</h2>
+        <p className="text-text-muted text-sm">管理中奖玩家的兑付情况</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 mb-6 mt-3 md:mt-0">
         <div className="glass rounded-xl px-4 py-3">
           <div className="text-text-muted text-sm mb-1">中奖笔数</div>
           <div className="text-xl font-bold text-gold">{filtered.length}</div>
@@ -84,10 +89,10 @@ export default function RedemptionsPage() {
                     {win.match} · <span className="text-accent">{win.option}</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 text-sm">
-                  <span className="text-text-secondary">下注: {win.betAmount.toFixed(1)}</span>
-                  <span className="text-text-secondary">赔率: {win.lockedTotalOdds.toFixed(2)}</span>
-                  <span className="text-accent font-semibold">获奖: +{win.winAmount.toFixed(1)}</span>
+                <div className="grid grid-cols-2 gap-2 md:flex md:items-center md:gap-3 text-sm">
+                  <span className="text-text-secondary rounded-lg bg-bg-surface px-2 py-1 md:bg-transparent md:p-0">下注: {win.betAmount.toFixed(1)}</span>
+                  <span className="text-text-secondary rounded-lg bg-bg-surface px-2 py-1 md:bg-transparent md:p-0">赔率: {win.lockedTotalOdds.toFixed(2)}</span>
+                  <span className="text-accent font-semibold rounded-lg bg-accent/5 px-2 py-1 md:bg-transparent md:p-0 col-span-2 md:col-span-1">获奖: +{win.winAmount.toFixed(1)}</span>
                 </div>
               </div>
               <div className="flex items-center justify-between">

@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>05 · 赛事管理 Tournaments · 响应式设计稿</title>
+<link rel="stylesheet" href="styles.css" />
+<style>
+  .tour-accordion { overflow: hidden; }
+  .tour-accordion .ta-head {
+    padding: 12px 14px; display: flex; align-items: center; justify-content: space-between;
+    gap: 8px; cursor: pointer;
+  }
+  .tour-accordion.open .ta-head { border-bottom: 1px solid var(--color-border); }
+  .tour-accordion .ta-title { font-family: var(--font-display); font-size: 15px; font-weight: 600; }
+  .tour-accordion .ta-meta { font-size: 11px; color: var(--color-text-muted); margin-top: 2px; }
+  .tour-accordion .ta-body { padding: 8px 0; }
+  .tour-accordion:not(.open) .ta-body { display: none; }
+  .chevron-rot { transition: transform 0.2s; }
+  .tour-accordion.open .chevron-rot { transform: rotate(180deg); }
+
+  .match-row {
+    padding: 10px 14px; border-top: 1px solid var(--color-border);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .match-row:first-child { border-top: none; }
+  .match-row .m-time { font-size: 11px; color: var(--color-text-muted); font-family: var(--font-display); font-variant-numeric: tabular-nums; flex-shrink: 0; width: 40px; }
+  .match-row .m-teams { flex: 1; min-width: 0; }
+  .match-row .m-name { font-size: 13px; font-weight: 500; }
+  .match-row .m-score { font-size: 11px; color: var(--color-text-secondary); margin-top: 2px; }
+  .match-row .m-actions { display: flex; gap: 4px; flex-shrink: 0; }
+
+  /* mobile edit odds full-screen */
+  .market-section {
+    background: var(--color-bg-primary);
+    border: 1px solid var(--color-border);
+    border-radius: 10px; margin-bottom: 8px; overflow: hidden;
+  }
+  .market-section summary {
+    padding: 12px 14px; list-style: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 13px; font-weight: 600;
+  }
+  .market-section summary::-webkit-details-marker { display: none; }
+  .market-section summary .m-meta {
+    font-size: 11px; color: var(--color-text-muted);
+    font-weight: 400; font-family: var(--font-display);
+  }
+  .market-section .m-body {
+    padding: 10px 14px 14px;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .odds-input {
+    width: 100%; padding: 6px 4px; border-radius: 5px;
+    border: 1px solid var(--color-border); background: var(--color-bg-surface);
+    text-align: center; font-family: var(--font-display); font-weight: 700;
+    font-size: 13px; color: var(--color-text-primary);
+  }
+  .odds-input-label {
+    font-size: 10px; color: var(--color-text-muted);
+    margin-bottom: 3px; text-align: center;
+  }
+
+  .grid-cs {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;
+  }
+  .grid-tg {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;
+  }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+  .grid-9 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+
+  /* overflow menu */
+  .overflow-menu {
+    position: absolute; top: 50px; right: 12px;
+    background: var(--color-bg-primary); border: 1px solid var(--color-border);
+    border-radius: 10px; box-shadow: var(--shadow-pop);
+    padding: 6px; min-width: 180px; z-index: 70;
+    display: none;
+  }
+  .overflow-menu.open { display: block; }
+  .overflow-menu button {
+    width: 100%; padding: 10px 12px; background: transparent; border: none;
+    text-align: left; cursor: pointer; border-radius: 6px;
+    font-size: 13px; color: var(--color-text-primary);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .overflow-menu button:hover { background: var(--color-bg-surface); }
+
+  /* web header actions */
+  .web-header-actions {
+    display: flex; gap: 8px; flex-wrap: wrap;
+  }
+</style>
+</head>
+<body class="mockup-canvas">
+
+<header class="mockup-header">
+  <div>
+    <h1 class="mockup-title"><span class="accent">05</span> · 赛事管理 Tournaments</h1>
+    <p class="mockup-subtitle">5 个头部按钮 → [新建] + [更多▼]；编辑赔率弹窗 → 全屏页面，市场分折叠区；7/8 列网格 → 4 列 + 横滚</p>
+  </div>
+  <a class="btn btn-ghost btn-sm" href="index.html">← 返回索引</a>
+</header>
+
+<div class="mockup-frame-row triple">
+
+  <!-- ============ PHONE 1: TOURNAMENT LIST ============ -->
+  <div>
+    <div class="frame-label">Mobile · 赛事列表</div>
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <div class="phone-statusbar">
+          <span>9:41</span>
+          <span class="right">
+            <svg width="14" height="10" viewBox="0 0 18 12" fill="currentColor"><path d="M1 11h2V5H1v6zm4 0h2V1H5v10zm4 0h2V7H9v4zm4 0h2V3h-2v8zm4 0h2V5h-2v6z"/></svg>
+            <svg width="20" height="10" viewBox="0 0 26 12" fill="none"><rect x="1" y="1" width="22" height="10" rx="2.5" stroke="currentColor" stroke-opacity="0.5"/><rect x="3" y="3" width="16" height="6" rx="1" fill="currentColor"/></svg>
+          </span>
+        </div>
+        <div class="mobile-topbar">
+          <button class="icon-btn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+          <div class="title">赛事管理</div>
+          <div style="display:flex;gap:4px;position:relative">
+            <button class="btn btn-primary btn-sm">新建</button>
+            <button class="icon-btn" onclick="toggleOverflow()">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+            </button>
+            <div id="overflowMenu" class="overflow-menu">
+              <button><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-9-9"/><path d="M21 3v6h-6"/></svg>拉取赔率</button>
+              <button><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>拉取赛果</button>
+              <button><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>批量去重</button>
+              <button><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg>本地导入</button>
+              <div style="height:1px;background:var(--color-border);margin:4px 0"></div>
+              <button><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg>查看日志</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="app-content mobile">
+          <!-- tournament list -->
+          <div style="display:flex;flex-direction:column;gap:6px">
+
+            <div class="glass tour-accordion open">
+              <div class="ta-head">
+                <div>
+                  <div class="ta-title">2026 世界杯 · 小组赛</div>
+                  <div class="ta-meta">8 场比赛 · 3 已结算</div>
+                </div>
+                <svg class="chevron-rot" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+              </div>
+              <div class="ta-body">
+                <div class="match-row">
+                  <div class="m-time">20:00</div>
+                  <div class="m-teams">
+                    <div class="m-name">沙特阿拉伯 vs 日本</div>
+                    <div class="m-score">未开赛</div>
+                  </div>
+                  <div class="m-actions">
+                    <button class="btn btn-ghost btn-sm">赔率</button>
+                  </div>
+                </div>
+                <div class="match-row">
+                  <div class="m-time">23:00</div>
+                  <div class="m-teams">
+                    <div class="m-name">阿根廷 vs 法国</div>
+                    <div class="m-score" style="color:var(--color-emerald)">2 : 1 · 已结算</div>
+                  </div>
+                  <div class="m-actions">
+                    <button class="btn btn-ghost btn-sm" style="color:var(--color-emerald)">查看</button>
+                  </div>
+                </div>
+                <div class="match-row">
+                  <div class="m-time">03:00</div>
+                  <div class="m-teams">
+                    <div class="m-name">巴西 vs 克罗地亚</div>
+                    <div class="m-score">未开赛</div>
+                  </div>
+                  <div class="m-actions">
+                    <button class="btn btn-ghost btn-sm">赔率</button>
+                  </div>
+                </div>
+                <div style="padding:8px 14px;text-align:center">
+                  <button class="btn btn-ghost btn-sm" style="color:var(--color-text-muted)">展开全部 8 场 ↓</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="glass tour-accordion">
+              <div class="ta-head">
+                <div>
+                  <div class="ta-title">2026 世界杯 · 1/8 决赛</div>
+                  <div class="ta-meta">4 场比赛 · 0 已结算</div>
+                </div>
+                <svg class="chevron-rot" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+              </div>
+            </div>
+
+            <div class="glass tour-accordion">
+              <div class="ta-head">
+                <div>
+                  <div class="ta-title">2026 世界杯 · 1/4 决赛</div>
+                  <div class="ta-meta">2 场比赛 · 0 已结算</div>
+                </div>
+                <svg class="chevron-rot" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="phone-home"></div>
+      </div>
+    </div>
+    <div class="anno-row">
+      <span class="anno">点击右上 ⋯ 查看更多操作</span>
+    </div>
+  </div>
+
+  <!-- ============ PHONE 2: EDIT ODDS FULLSCREEN ============ -->
+  <div>
+    <div class="frame-label">Mobile · 编辑赔率（全屏）</div>
+    <div class="phone">
+      <div class="phone-notch"></div>
+      <div class="phone-screen">
+        <div class="phone-statusbar">
+          <span>9:41</span>
+          <span class="right">
+            <svg width="14" height="10" viewBox="0 0 18 12" fill="currentColor"><path d="M1 11h2V5H1v6zm4 0h2V1H5v10zm4 0h2V7H9v4zm4 0h2V3h-2v8zm4 0h2V5h-2v6z"/></svg>
+            <svg width="20" height="10" viewBox="0 0 26 12" fill="none"><rect x="1" y="1" width="22" height="10" rx="2.5" stroke="currentColor" stroke-opacity="0.5"/><rect x="3" y="3" width="16" height="6" rx="1" fill="currentColor"/></svg>
+          </span>
+        </div>
+        <div class="mobile-topbar">
+          <button class="icon-btn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
+          <div class="title">编辑赔率</div>
+          <button class="btn btn-primary btn-sm">保存</button>
+        </div>
+
+        <div class="app-content mobile">
+          <div class="glass" style="padding:10px 12px;margin-bottom:10px">
+            <div style="font-size:14px;font-weight:600">沙特阿拉伯 vs 日本</div>
+            <div style="font-size:11px;color:var(--color-text-muted);margin-top:2px">06-16 20:00 开赛 · 未结算</div>
+          </div>
+
+          <details class="market-section" open>
+            <summary>
+              <span>胜平负</span>
+              <span class="m-meta">3 项</span>
+            </summary>
+            <div class="m-body">
+              <div class="grid-3">
+                <div><div class="odds-input-label">主胜</div><input class="odds-input" value="2.85" /></div>
+                <div><div class="odds-input-label">平</div><input class="odds-input" value="3.20" /></div>
+                <div><div class="odds-input-label">客胜</div><input class="odds-input" value="2.45" /></div>
+              </div>
+            </div>
+          </details>
+
+          <details class="market-section">
+            <summary>
+              <span>让球胜平负</span>
+              <span class="m-meta">6 项 · -1</span>
+            </summary>
+          </details>
+
+          <details class="market-section">
+            <summary>
+              <span>半全场</span>
+              <span class="m-meta">9 项</span>
+            </summary>
+          </details>
+
+          <details class="market-section">
+            <summary>
+              <span>总进球数</span>
+              <span class="m-meta">8 项</span>
+            </summary>
+          </details>
+
+          <details class="market-section">
+            <summary>
+              <span>猜比分</span>
+              <span class="m-meta">31 项</span>
+            </summary>
+          </details>
+
+          <div style="background:var(--color-bg-surface);border-radius:10px;padding:12px;margin-top:12px">
+            <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:8px">批量操作</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+              <button class="btn btn-ghost btn-sm">赔率 +10%</button>
+              <button class="btn btn-ghost btn-sm">重置默认</button>
+            </div>
+          </div>
+
+          <button class="btn btn-primary btn-block btn-lg" style="margin-top:12px">保存赔率</button>
+        </div>
+
+        <div class="phone-home"></div>
+      </div>
+    </div>
+    <div class="anno-row">
+      <span class="anno">5 个市场默认折叠，按需展开</span>
+      <span class="anno">猜比分 31 项 → 4 列网格</span>
+    </div>
+  </div>
+
+  <!-- ============ BROWSER ============ -->
+  <div>
+    <div class="frame-label">Web · 1280px+</div>
+    <div class="browser">
+      <div class="browser-bar">
+        <div class="browser-dots"><span></span><span></span><span></span></div>
+        <div class="browser-url">localhost:3001/admin/tournaments</div>
+      </div>
+      <div class="browser-viewport">
+        <div class="app-shell">
+          <aside class="sidebar">
+            <div class="sidebar-brand"><span class="accent">嗨</span>起来<span class="tag">管理后台</span></div>
+            <nav class="sidebar-nav">
+              <a href="01-dashboard.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>总览</a>
+              <a href="02-bet-entry.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>下注管理</a>
+              <a href="03-bet-details.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/></svg>下注详情</a>
+              <a href="04-players.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>玩家管理</a>
+              <a class="active" href="#"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/></svg>赛事管理</a>
+              <a href="06-results.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="m9 15 2 2 4-4"/></svg>赛果查看</a>
+              <a href="07-redemptions.html"><svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>兑奖管理</a>
+            </nav>
+            <div class="sidebar-footer"><a href="#" style="color:inherit;text-decoration:none">← 返回玩家端</a></div>
+          </aside>
+
+          <main class="app-content">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+              <div>
+                <h2 class="font-display" style="font-size:20px;font-weight:700;margin:0 0 4px">赛事管理</h2>
+                <p style="font-size:13px;color:var(--color-text-muted);margin:0">赛事 / 比赛 / 赔率 / 赛果 / 数据导入</p>
+              </div>
+              <div class="web-header-actions">
+                <button class="btn btn-ghost">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-9-9"/><path d="M21 3v6h-6"/></svg>
+                  拉取赔率
+                </button>
+                <button class="btn btn-ghost">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                  拉取赛果
+                </button>
+                <button class="btn btn-ghost">批量去重</button>
+                <button class="btn btn-ghost">本地导入</button>
+                <button class="btn btn-primary">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+                  新建赛事
+                </button>
+              </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:16px;align-items:flex-start">
+
+              <!-- main: tournaments -->
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <div class="glass tour-accordion open">
+                  <div class="ta-head">
+                    <div>
+                      <div class="ta-title">2026 世界杯 · 小组赛</div>
+                      <div class="ta-meta">8 场 · 3 已结算 · 06-14 ~ 06-20</div>
+                    </div>
+                    <svg class="chevron-rot" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+                  </div>
+                  <div class="ta-body">
+                    <div class="match-row">
+                      <div class="m-time">06-16 20:00</div>
+                      <div class="m-teams">
+                        <div class="m-name">沙特阿拉伯 vs 日本</div>
+                        <div class="m-score">未开赛 · 赔率已配</div>
+                      </div>
+                      <div class="m-actions">
+                        <button class="btn btn-ghost btn-sm">编辑赔率</button>
+                        <button class="btn btn-ghost btn-sm">结算</button>
+                      </div>
+                    </div>
+                    <div class="match-row">
+                      <div class="m-time">06-15 19:00</div>
+                      <div class="m-teams">
+                        <div class="m-name">阿根廷 vs 法国</div>
+                        <div class="m-score" style="color:var(--color-emerald)">2 : 1 · 已结算</div>
+                      </div>
+                      <div class="m-actions">
+                        <button class="btn btn-ghost btn-sm">查看</button>
+                      </div>
+                    </div>
+                    <div class="match-row">
+                      <div class="m-time">06-16 03:00</div>
+                      <div class="m-teams">
+                        <div class="m-name">巴西 vs 克罗地亚</div>
+                        <div class="m-score">未开赛 · 赔率待配</div>
+                      </div>
+                      <div class="m-actions">
+                        <button class="btn btn-primary btn-sm">配置赔率</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="glass tour-accordion">
+                  <div class="ta-head">
+                    <div>
+                      <div class="ta-title">2026 世界杯 · 1/8 决赛</div>
+                      <div class="ta-meta">4 场 · 0 已结算</div>
+                    </div>
+                    <svg class="chevron-rot" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+                  </div>
+                </div>
+              </div>
+
+              <!-- right: log sidebar -->
+              <aside class="glass" style="position:sticky;top:24px;align-self:flex-start;padding:14px 16px">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+                  <h3 class="font-display" style="font-size:16px;font-weight:700;margin:0">拉取日志</h3>
+                  <button class="btn btn-ghost btn-sm">刷新</button>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:8px;font-size:12px">
+                  <div style="padding:10px;background:var(--color-bg-surface);border-radius:6px">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                      <span style="font-weight:600">赔率拉取</span>
+                      <span class="badge badge-won" style="font-size:10px">成功</span>
+                    </div>
+                    <div style="color:var(--color-text-muted);font-size:11px">06-16 09:32 · 新增 12 / 更新 8</div>
+                  </div>
+                  <div style="padding:10px;background:var(--color-bg-surface);border-radius:6px">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                      <span style="font-weight:600">赛果拉取</span>
+                      <span class="badge badge-won" style="font-size:10px">成功</span>
+                    </div>
+                    <div style="color:var(--color-text-muted);font-size:11px">06-15 22:01 · 结算 3 场</div>
+                  </div>
+                  <div style="padding:10px;background:var(--color-bg-surface);border-radius:6px">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                      <span style="font-weight:600">本地导入</span>
+                      <span class="badge badge-active" style="font-size:10px">进行中</span>
+                    </div>
+                    <div style="color:var(--color-text-muted);font-size:11px">06-16 10:15 · 处理中...</div>
+                  </div>
+                </div>
+              </aside>
+            </div>
+          </main>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function toggleOverflow() {
+  document.getElementById('overflowMenu').classList.toggle('open');
+}
+</script>
+</body>
+</html>
