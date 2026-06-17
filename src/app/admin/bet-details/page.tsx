@@ -1,15 +1,11 @@
 "use client";
 
-import { useState, useEffect, useMemo, type ReactNode } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { displayTeamName } from "@/lib/team-display";
 import {
   STATUS_MAP,
   MARKET_NAMES,
-  X1X_LABELS,
-  HANDICAP_LABELS,
-  RESULT_MAP,
   formatOptionLabel,
-  isWinningOption,
 } from "@/lib/bet-display";
 
 interface OddsRow {
@@ -87,7 +83,7 @@ export default function BetDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>("ALL");
   const [nameFilter, setNameFilter] = useState<string>("");
-  const [expandedBet, setExpandedBet] = useState<number | null>(null);
+  const [selectedBetId, setSelectedBetId] = useState<number | null>(null);
   const [selectedOverviewOption, setSelectedOverviewOption] = useState<string | null>(null);
 
   useEffect(() => {
@@ -124,13 +120,25 @@ export default function BetDetailsPage() {
     });
   }, [bets, filter, nameFilter]);
 
-  const matchGroups = useMemo(() => buildMatchBetGroups(filtered), [filtered]);
+  const selectedBet = useMemo(() => {
+    if (selectedBetId !== null) {
+      const found = filtered.find((b) => b.id === selectedBetId);
+      if (found) return found;
+    }
+    return filtered[0] ?? null;
+  }, [filtered, selectedBetId]);
+
+  const matchGroups = useMemo(() => {
+    if (!selectedBet) return [];
+    const selectedMatchKeys = new Set(selectedBet.items.map((it) => getMatchKey(it)));
+    return buildMatchBetGroups(filtered).filter((g) => selectedMatchKeys.has(g.key));
+  }, [selectedBet, filtered]);
 
 
   return (
     <div className="w-full">
       <h2 className="font-display text-lg font-semibold mb-1">下注详情</h2>
-      <p className="text-text-muted text-sm mb-4">查看每笔下注的详细内容</p>
+      <p className="text-text-muted text-sm mb-4">点击左侧下注，右侧查看对应赛事详情</p>
 
       <div className="flex items-center gap-3 mb-4">
         <div className="flex gap-1.5 overflow-x-auto pb-1">
@@ -144,6 +152,7 @@ export default function BetDetailsPage() {
               key={f.key}
               onClick={() => {
                 setFilter(f.key);
+                setSelectedBetId(null);
                 setSelectedOverviewOption(null);
               }}
               className={`px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
@@ -160,6 +169,7 @@ export default function BetDetailsPage() {
           value={nameFilter}
           onChange={(e) => {
             setNameFilter(e.target.value);
+            setSelectedBetId(null);
             setSelectedOverviewOption(null);
           }}
           className="input-field rounded-lg px-3 py-1.5 text-sm"
@@ -181,14 +191,24 @@ export default function BetDetailsPage() {
             ) : (
               filtered.map((bet) => {
                 const statusInfo = STATUS_MAP[bet.status] ?? { label: bet.status, badge: "" };
-                const isExpanded = expandedBet === bet.id;
+                const isSelected = selectedBet?.id === bet.id;
+                const matchNames = bet.items
+                  .map((it) => `${displayTeamName(it.match.homeTeam)} vs ${displayTeamName(it.match.awayTeam)}`)
+                  .join(" · ");
 
                 return (
-                  <div key={bet.id} className="glass rounded-xl overflow-hidden">
-                    <button
-                      onClick={() => setExpandedBet(isExpanded ? null : bet.id)}
-                      className="w-full px-4 py-3 text-left"
-                    >
+                  <button
+                    key={bet.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedBetId(bet.id);
+                      setSelectedOverviewOption(null);
+                    }}
+                    className={`w-full text-left glass rounded-xl transition-all ${
+                      isSelected ? "ring-1 ring-accent/60 border-accent/40" : ""
+                    }`}
+                  >
+                    <div className="px-4 py-3">
                       <div className="flex items-start justify-between gap-3 mb-1">
                         <div className="flex items-center gap-2 min-w-0">
                           <span className="text-sm font-medium shrink-0">{bet.user?.nickname || "未知"}</span>
@@ -197,22 +217,17 @@ export default function BetDetailsPage() {
                               串关 ×{bet.items.length}
                             </span>
                           )}
-                          <span className="text-text-muted text-sm truncate">{bet.betUid}</span>
                         </div>
                         <span className={`${statusInfo.badge} text-sm px-2 py-0.5 rounded-full font-medium shrink-0`}>
                           {statusInfo.label}
                         </span>
                       </div>
+                      <div className="text-sm text-text-secondary truncate mb-1">{matchNames || "—"}</div>
                       <div className="flex items-center justify-between gap-3 text-sm">
                         <span className="text-text-muted shrink-0">
                           {new Date(bet.createdAt).toLocaleString("zh-CN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                         </span>
                         <div className="flex items-center gap-3 min-w-0">
-                          {bet.items.length > 0 && (
-                            <span className="text-text-secondary truncate">
-                              {bet.items.map((it) => `${MARKET_NAMES[it.betMarket] ?? it.betMarket} ${formatOptionLabel(it.betMarket, it.selectedOption)}`).join(" + ")}
-                            </span>
-                          )}
                           {bet.lockedTotalOdds > 0 && (
                             <span className="text-text-secondary shrink-0">赔率 {bet.lockedTotalOdds.toFixed(2)}</span>
                           )}
@@ -224,59 +239,8 @@ export default function BetDetailsPage() {
                           )}
                         </div>
                       </div>
-                    </button>
-
-                    {isExpanded && (
-                      <div className="px-4 pb-3 border-t border-border pt-3 space-y-3 animate-fade-in-up">
-                        {bet.items.map((item) => {
-                          const resultInfo = RESULT_MAP[item.result] ?? { label: item.result, color: "" };
-                          return (
-                            <div
-                              key={item.id}
-                              className="bg-bg-primary rounded-lg overflow-hidden"
-                            >
-                              <div className="px-3 py-2 border-b border-border/30 flex items-center justify-between gap-3">
-                                <div className="flex items-center gap-2 min-w-0">
-                                  <span className="text-sm font-medium truncate">{displayTeamName(item.match.homeTeam)} vs {displayTeamName(item.match.awayTeam)}</span>
-                                  {item.match.homeScore !== null && item.match.awayScore !== null && (
-                                    <span className="text-sm bg-accent/10 text-accent px-1.5 py-0.5 rounded font-medium shrink-0">
-                                      全场 {item.match.homeScore}:{item.match.awayScore}
-                                    </span>
-                                  )}
-                                  {item.match.halfHomeScore !== null && item.match.halfAwayScore !== null && (
-                                    <span className="text-sm bg-text-muted/10 text-text-muted px-1.5 py-0.5 rounded shrink-0">
-                                      半场 {item.match.halfHomeScore}:{item.match.halfAwayScore}
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="flex items-center gap-2 shrink-0">
-                                  <span className="text-sm text-text-muted">{MARKET_NAMES[item.betMarket] ?? item.betMarket}</span>
-                                  <span className="text-accent text-sm">{formatOptionLabel(item.betMarket, item.selectedOption)}</span>
-                                  <span className="text-text-muted text-sm">@ {Number(item.lockedOdds).toFixed(2)}</span>
-                                  <span className={`text-sm ${resultInfo.color}`}>{resultInfo.label}</span>
-                                </div>
-                              </div>
-
-                              <div className="px-3 py-2 space-y-2">
-                                <MatchOddsGrid
-                                  odds={item.match.odds}
-                                  homeScore={item.match.homeScore}
-                                  awayScore={item.match.awayScore}
-                                  halfHomeScore={item.match.halfHomeScore}
-                                  halfAwayScore={item.match.halfAwayScore}
-                                  marketFilter={item.betMarket}
-                                />
-                              </div>
-                            </div>
-                          );
-                        })}
-                        <div className="flex items-center justify-between text-sm pt-1">
-                          <span className="text-text-muted">潜在赔付</span>
-                          <span className="text-text-secondary">{bet.potentialPayout.toFixed(1)}</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                    </div>
+                  </button>
                 );
               })
             )}
@@ -286,6 +250,7 @@ export default function BetDetailsPage() {
             groups={matchGroups}
             selectedOptionKey={selectedOverviewOption}
             onSelectOption={setSelectedOverviewOption}
+            hasBets={filtered.length > 0}
           />
         </div>
       )}
@@ -344,25 +309,29 @@ function MatchBetOverview({
   groups,
   selectedOptionKey,
   onSelectOption,
+  hasBets,
 }: {
   groups: MatchBetGroup[];
   selectedOptionKey: string | null;
   onSelectOption: (key: string) => void;
+  hasBets: boolean;
 }) {
   return (
     <aside className="glass rounded-2xl p-3 lg:sticky lg:top-4 max-h-[calc(100vh-7rem)] overflow-y-auto">
       <div className="flex items-start justify-between gap-3 mb-3">
         <div>
           <h3 className="font-display text-base font-semibold">赛事下注概览</h3>
-          <p className="text-xs text-text-muted mt-0.5">红色表示当前筛选结果中有人下注</p>
+          <p className="text-xs text-text-muted mt-0.5">红色表示该选项被下注</p>
         </div>
-        <span className="text-xs px-2 py-1 rounded-full bg-red/10 text-red border border-red/25 shrink-0">
-          当前筛选
+        <span className="text-xs px-2 py-1 rounded-full bg-accent/10 text-accent border border-accent/25 shrink-0">
+          选中下注
         </span>
       </div>
 
       {groups.length === 0 ? (
-        <div className="text-text-muted text-sm py-8 text-center">当前筛选下暂无下注赛事</div>
+        <div className="text-text-muted text-sm py-8 text-center">
+          {hasBets ? "请选择左侧下注查看详情" : "当前筛选下暂无下注赛事"}
+        </div>
       ) : (
         <div className="space-y-3">
           {groups.map((group) => (
@@ -551,140 +520,6 @@ function OverviewRecordButton({
         <span className="text-text-muted truncate">{betContent}</span>
         <span className="shrink-0 text-text-muted">@ {record.lockedOdds.toFixed(2)}</span>
       </div>
-    </div>
-  );
-}
-
-function MatchOddsGrid({
-  odds,
-  homeScore,
-  awayScore,
-  halfHomeScore,
-  halfAwayScore,
-  marketFilter,
-}: {
-  odds: OddsRow[];
-  homeScore: number | null;
-  awayScore: number | null;
-  halfHomeScore: number | null;
-  halfAwayScore: number | null;
-  marketFilter?: string;
-}) {
-  const byType: Record<string, OddsRow[]> = {};
-  for (const o of odds) {
-    if (!byType[o.betType]) byType[o.betType] = [];
-    byType[o.betType].push(o);
-  }
-
-  const hasScores = homeScore !== null && awayScore !== null;
-
-  return (
-    <div className="space-y-2">
-      {byType["X1X"] && (!marketFilter || marketFilter === "X1X") && (
-        <OddsDisplaySection title="胜平负" columns="grid-cols-3">
-          {byType["X1X"].map((o) => (
-            <OddsResultButton
-              key={o.optionKey}
-              label={X1X_LABELS[o.optionKey] || o.optionKey}
-              odds={Number(o.oddsValue)}
-              isWinner={hasScores && isWinningOption("X1X", o.optionKey, homeScore!, awayScore, halfHomeScore, halfAwayScore)}
-            />
-          ))}
-        </OddsDisplaySection>
-      )}
-
-      {byType["HANDICAP_X1X"] && (!marketFilter || marketFilter === "HANDICAP_X1X") && (
-        <OddsDisplaySection title="让球胜平负" columns="grid-cols-3">
-          {byType["HANDICAP_X1X"].map((o) => {
-            const [handicap, option] = o.optionKey.includes(":") ? o.optionKey.split(":") : ["", o.optionKey];
-            return (
-              <OddsResultButton
-                key={o.optionKey}
-                label={`${handicap}${HANDICAP_LABELS[option] || option}`}
-                odds={Number(o.oddsValue)}
-                isWinner={hasScores && isWinningOption("HANDICAP_X1X", o.optionKey, homeScore!, awayScore, halfHomeScore, halfAwayScore)}
-              />
-            );
-          })}
-        </OddsDisplaySection>
-      )}
-
-      {byType["HALF_FULL"] && (!marketFilter || marketFilter === "HALF_FULL") && (
-        <OddsDisplaySection title="半全场" columns="grid-cols-3">
-          {byType["HALF_FULL"].map((o) => (
-            <OddsResultButton
-              key={o.optionKey}
-              label={o.optionKey}
-              odds={Number(o.oddsValue)}
-              isWinner={hasScores && halfHomeScore !== null && halfAwayScore !== null &&
-                isWinningOption("HALF_FULL", o.optionKey, homeScore!, awayScore, halfHomeScore, halfAwayScore)}
-            />
-          ))}
-        </OddsDisplaySection>
-      )}
-
-      {byType["TOTAL_GOALS"] && (!marketFilter || marketFilter === "TOTAL_GOALS") && (
-        <OddsDisplaySection title="总进球" columns="grid-cols-4">
-          {byType["TOTAL_GOALS"].map((o) => (
-            <OddsResultButton
-              key={o.optionKey}
-              label={o.optionKey}
-              odds={Number(o.oddsValue)}
-              isWinner={hasScores && isWinningOption("TOTAL_GOALS", o.optionKey, homeScore!, awayScore, halfHomeScore, halfAwayScore)}
-            />
-          ))}
-        </OddsDisplaySection>
-      )}
-
-      {byType["CORRECT_SCORE"] && (!marketFilter || marketFilter === "CORRECT_SCORE") && (
-        <OddsDisplaySection title="猜比分" columns="grid-cols-4">
-          {byType["CORRECT_SCORE"].map((o) => (
-            <OddsResultButton
-              key={o.optionKey}
-              label={o.optionKey}
-              odds={Number(o.oddsValue)}
-              isWinner={hasScores && isWinningOption("CORRECT_SCORE", o.optionKey, homeScore!, awayScore, halfHomeScore, halfAwayScore)}
-            />
-          ))}
-        </OddsDisplaySection>
-      )}
-    </div>
-  );
-}
-
-function OddsDisplaySection({ title, columns, children }: { title: string; columns: string; children: ReactNode }) {
-  return (
-    <section>
-      <div className="mb-1 text-sm font-semibold text-text-muted">{title}</div>
-      <div className={`grid ${columns} gap-1`}>{children}</div>
-    </section>
-  );
-}
-
-function OddsResultButton({
-  label,
-  odds,
-  isWinner,
-}: {
-  label: string;
-  odds: number;
-  isWinner: boolean;
-}) {
-  return (
-    <div
-      className={`flex items-center justify-center gap-1 px-2 py-2 text-center text-sm rounded border ${
-        isWinner
-          ? "bg-red/15 text-red border-red/40 font-semibold"
-          : "bg-bg-surface text-text-secondary border-border/50"
-      }`}
-    >
-      {isWinner && (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="shrink-0">
-          <path d="M5 13l4 4L19 7" />
-        </svg>
-      )}
-      <span>{label}</span>
-      <span className={`${isWinner ? "text-red" : ""}`}>{odds.toFixed(2)}</span>
     </div>
   );
 }
