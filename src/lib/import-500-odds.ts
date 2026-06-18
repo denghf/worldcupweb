@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/db";
+import { BEIJING_DEDUP_MIN_DATE, canonicalTeam, getBeijingDateKey } from "@/lib/beijing-time";
+import { mergeDuplicateMatches, type MergeSummary } from "@/lib/match-merge";
 
 const BASE_URL = "https://trade.500.com/jczq/";
 const HEADERS = {
@@ -11,13 +13,6 @@ const HALF_FULL_LABELS: Record<string, string> = {
   "3-3": "胜胜", "3-1": "胜平", "3-0": "胜负",
   "1-3": "平胜", "1-1": "平平", "1-0": "平负",
   "0-3": "负胜", "0-1": "负平", "0-0": "负负",
-};
-
-const TEAM_ALIASES: Record<string, string> = {
-  "沙特": "沙特阿拉伯",
-  "乌兹别克": "乌兹别克斯坦",
-  "刚果(金)": "刚果（金）",
-  "民主刚果": "刚果（金）",
 };
 
 interface ParsedOdds {
@@ -56,21 +51,13 @@ export interface Import500OddsSummary {
   created: number;
   items: Import500OddsItem[];
   message?: string;
+  merge?: MergeSummary;
 }
 
 export function getTodayShanghai(): string {
   const now = new Date();
   const shanghai = new Date(now.getTime() + 8 * 3600 * 1000);
   return `${shanghai.getUTCFullYear()}-${String(shanghai.getUTCMonth() + 1).padStart(2, "0")}-${String(shanghai.getUTCDate()).padStart(2, "0")}`;
-}
-
-function canonicalTeam(name: string): string {
-  const n = name.trim().replace(/\s+/g, "").replace(/\(/g, "（").replace(/\)/g, "）");
-  return TEAM_ALIASES[n] ?? n;
-}
-
-function dateKey(date: Date): string {
-  return `${date.getUTCFullYear()}-${date.getUTCMonth()}-${date.getUTCDate()}`;
 }
 
 async function fetchPage(playid: number, date: string): Promise<string> {
@@ -250,7 +237,7 @@ export async function import500Odds(date = getTodayShanghai()): Promise<Import50
   });
   const fuzzyIndex = new Map<string, (typeof allExisting)[number]>();
   for (const m of allExisting) {
-    const key = `${dateKey(m.kickoffTime)}:${canonicalTeam(m.homeTeam)}:${canonicalTeam(m.awayTeam)}`;
+    const key = `${getBeijingDateKey(m.kickoffTime)}:${canonicalTeam(m.homeTeam)}:${canonicalTeam(m.awayTeam)}`;
     if (!fuzzyIndex.has(key)) fuzzyIndex.set(key, m);
   }
 
@@ -263,7 +250,7 @@ export async function import500Odds(date = getTodayShanghai()): Promise<Import50
     const uniqueOdds = m.odds;
 
     const existing = existingMap.get(m.apiMatchId);
-    const fuzzyKey = `${dateKey(kickoff)}:${canonicalTeam(m.homeTeam)}:${canonicalTeam(m.awayTeam)}`;
+    const fuzzyKey = `${getBeijingDateKey(kickoff)}:${canonicalTeam(m.homeTeam)}:${canonicalTeam(m.awayTeam)}`;
     const fuzzyMatch = !existing ? fuzzyIndex.get(fuzzyKey) : null;
     const target = existing ?? fuzzyMatch;
 
@@ -338,5 +325,12 @@ export async function import500Odds(date = getTodayShanghai()): Promise<Import50
     }
   }
 
-  return { fetched: fetchedMatches.length, updated, created, items };
+  let merge: MergeSummary | undefined;
+  try {
+    merge = await mergeDuplicateMatches({ minDate: BEIJING_DEDUP_MIN_DATE });
+  } catch (e) {
+    console.error("[import-500-odds] mergeDuplicateMatches failed", e);
+  }
+
+  return { fetched: fetchedMatches.length, updated, created, items, merge };
 }

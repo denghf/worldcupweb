@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin 总览 · 玩家盈亏曲线设计稿</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Noto+Sans+SC:wght@400;500;600;700;800&display=swap');
+
+    :root {
+      --bg-deep: #f5f6fa;
+      --bg-primary: #ffffff;
+      --bg-surface: #f8f9fc;
+      --bg-elevated: #eef1f6;
+      --bg-hover: #fff0f1;
+      --accent: #e60012;
+      --accent-dim: #ba0010;
+      --accent-glow: rgba(230, 0, 18, 0.18);
+      --gold: #f4b42a;
+      --gold-dim: #d99510;
+      --text-primary: #1f2530;
+      --text-secondary: #667085;
+      --text-muted: #a0a7b2;
+      --border: rgba(31, 37, 48, 0.08);
+      --border-strong: rgba(31, 37, 48, 0.14);
+      --win: #e60012;
+      --loss: #10a15f;
+      --font-display: 'Barlow Condensed', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      --font-body: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 12% 0%, rgba(230, 0, 18, 0.08), transparent 26%),
+        radial-gradient(circle at 88% 12%, rgba(244, 180, 42, 0.12), transparent 28%),
+        linear-gradient(180deg, #f8f9fc 0%, var(--bg-deep) 100%);
+      color: var(--text-primary);
+      font-family: var(--font-body);
+      -webkit-font-smoothing: antialiased;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .app-shell {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      width: 224px;
+      background: var(--bg-primary);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+    }
+
+    .brand {
+      height: 64px;
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      border-bottom: 1px solid var(--border);
+      font-family: var(--font-display);
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .brand span:first-child { color: var(--accent); }
+    .brand small {
+      margin-left: 8px;
+      color: var(--text-muted);
+      font-family: var(--font-body);
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0;
+    }
+
+    .nav {
+      padding: 16px 12px;
+      display: grid;
+      gap: 4px;
+      flex: 1;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+
+    .nav-item.active {
+      background: rgba(230, 0, 18, 0.10);
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .nav-icon {
+      width: 18px;
+      height: 18px;
+      border: 1.8px solid currentColor;
+      border-radius: 5px;
+      opacity: 0.9;
+    }
+
+    .back-link {
+      border-top: 1px solid var(--border);
+      padding: 16px;
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+
+    .content {
+      flex: 1;
+      padding: 24px;
+      overflow: hidden;
+    }
+
+    .dashboard {
+      max-width: 1320px;
+      margin: 0 auto;
+      display: grid;
+      gap: 24px;
+    }
+
+    .mobile-topbar { display: none; }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .glass {
+      background: rgba(255, 255, 255, 0.96);
+      border: 1px solid var(--border);
+      box-shadow: 0 10px 30px rgba(31, 37, 48, 0.06);
+    }
+
+    .stat-card {
+      min-height: 86px;
+      border-radius: 16px;
+      padding: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stat-card::after {
+      content: "";
+      position: absolute;
+      width: 96px;
+      height: 96px;
+      right: -46px;
+      top: -46px;
+      border-radius: 999px;
+      background: rgba(230, 0, 18, 0.05);
+    }
+
+    .stat-label {
+      color: var(--text-muted);
+      font-size: 14px;
+      margin-bottom: 5px;
+    }
+
+    .stat-value {
+      font-family: var(--font-display);
+      font-size: 26px;
+      line-height: 1;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+    }
+
+    .text-accent { color: var(--accent); }
+    .text-loss { color: var(--loss); }
+    .text-gold { color: var(--gold-dim); }
+
+    .section-heading {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 12px;
+    }
+
+    .section-heading h2 {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .section-heading p {
+      margin: 3px 0 0;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    .small-muted {
+      color: var(--text-muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .ranking-card {
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 980px;
+      font-size: 14px;
+    }
+
+    th, td {
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(31, 37, 48, 0.055);
+      text-align: right;
+    }
+
+    th:first-child, td:first-child,
+    th:nth-child(2), td:nth-child(2) { text-align: left; }
+
+    th {
+      color: var(--text-muted);
+      font-weight: 500;
+      background: linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
+    }
+
+    tr:last-child td { border-bottom: 0; }
+
+    .rank { color: var(--gold-dim); font-weight: 700; }
+    .profit-plus { color: var(--win); font-weight: 700; }
+    .profit-minus { color: var(--loss); font-weight: 700; }
+
+    .chart-section {
+      margin-top: 2px;
+    }
+
+    .chart-section-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 12px;
+    }
+
+    .chart-section-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .title-mark {
+      width: 8px;
+      height: 28px;
+      border-radius: 999px;
+      background: linear-gradient(180deg, var(--accent) 0%, var(--gold) 100%);
+      box-shadow: 0 8px 18px rgba(230, 0, 18, 0.18);
+    }
+
+    .chart-section h2 {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: 20px;
+      line-height: 1.05;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+    }
+
+    .chart-section p {
+      margin: 4px 0 0;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    .range-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--bg-primary);
+      color: var(--text-secondary);
+      font-size: 12px;
+      white-space: nowrap;
+      box-shadow: 0 6px 16px rgba(31, 37, 48, 0.04);
+    }
+
+    .pulse-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: var(--accent);
+      box-shadow: 0 0 0 4px rgba(230, 0, 18, 0.10);
+    }
+
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .chart-card {
+      border-radius: 18px;
+      padding: 18px;
+      overflow: hidden;
+      min-height: 372px;
+      position: relative;
+    }
+
+    .chart-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 88% 6%, rgba(230, 0, 18, 0.065), transparent 31%);
+      pointer-events: none;
+    }
+
+    .chart-card > * { position: relative; }
+
+    .chart-topline {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .chart-title-group {
+      min-width: 0;
+    }
+
+    .chart-title {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--text-primary);
+    }
+
+    .chart-subtitle {
+      margin-top: 3px;
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+
+    .kpi-cluster {
+      display: flex;
+      align-items: stretch;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .mini-kpi {
+      min-width: 86px;
+      padding: 8px 9px;
+      border-radius: 12px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      text-align: right;
+    }
+
+    .mini-kpi-label {
+      color: var(--text-muted);
+      font-size: 10px;
+      margin-bottom: 2px;
+    }
+
+    .mini-kpi-value {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .legend-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin: 6px 0 8px;
+      color: var(--text-muted);
+      font-size: 11px;
+    }
+
+    .legend-items {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend-swatch {
+      width: 16px;
+      height: 3px;
+      border-radius: 999px;
+      background: var(--accent);
+    }
+
+    .legend-swatch.loss { background: var(--loss); }
+    .legend-swatch.gold { background: var(--gold); }
+
+    .chart-frame {
+      height: 238px;
+      border-radius: 14px;
+      border: 1px solid rgba(31, 37, 48, 0.06);
+      background:
+        linear-gradient(to right, rgba(31, 37, 48, 0.045) 1px, transparent 1px) 0 0 / 14.285% 100%,
+        linear-gradient(to bottom, rgba(31, 37, 48, 0.06) 1px, transparent 1px) 0 0 / 100% 20%,
+        linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .zero-line {
+      position: absolute;
+      left: 48px;
+      right: 16px;
+      top: 53%;
+      border-top: 1px dashed rgba(31, 37, 48, 0.22);
+    }
+
+    .axis-label {
+      position: absolute;
+      left: 12px;
+      color: var(--text-muted);
+      font-size: 10px;
+      line-height: 1;
+    }
+
+    .axis-label.top { top: 15px; }
+    .axis-label.mid { top: 51%; }
+    .axis-label.bottom { bottom: 20px; }
+
+    .chart-svg {
+      position: absolute;
+      inset: 10px 8px 24px 42px;
+      width: calc(100% - 50px);
+      height: calc(100% - 34px);
+      overflow: visible;
+    }
+
+    .x-axis {
+      position: absolute;
+      left: 46px;
+      right: 12px;
+      bottom: 8px;
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      color: var(--text-muted);
+      font-size: 10px;
+    }
+
+    .x-axis span { text-align: center; }
+
+    .line-path {
+      fill: none;
+      stroke: var(--accent);
+      stroke-width: 3.2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      filter: drop-shadow(0 8px 10px rgba(230, 0, 18, 0.14));
+    }
+
+    .line-path.loss-line {
+      stroke: var(--loss);
+      filter: drop-shadow(0 8px 10px rgba(16, 161, 95, 0.14));
+    }
+
+    .area-fill {
+      fill: url(#cumulativeFill);
+      opacity: 0.96;
+    }
+
+    .area-fill.daily-positive {
+      fill: url(#dailyPositiveFill);
+      opacity: 0.9;
+    }
+
+    .area-fill.daily-negative {
+      fill: url(#dailyNegativeFill);
+      opacity: 0.72;
+    }
+
+    .point {
+      fill: #ffffff;
+      stroke: var(--accent);
+      stroke-width: 2.5;
+      filter: drop-shadow(0 4px 7px rgba(31, 37, 48, 0.14));
+    }
+
+    .point.loss-point { stroke: var(--loss); }
+
+    .focus-note {
+      position: absolute;
+      right: 18px;
+      top: 72px;
+      min-width: 118px;
+      padding: 9px 10px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.92);
+      border: 1px solid rgba(31, 37, 48, 0.08);
+      box-shadow: 0 10px 24px rgba(31, 37, 48, 0.08);
+      backdrop-filter: blur(10px);
+    }
+
+    .focus-note.down { top: auto; bottom: 48px; right: 26px; }
+
+    .focus-label {
+      color: var(--text-muted);
+      font-size: 10px;
+      margin-bottom: 2px;
+    }
+
+    .focus-value {
+      font-family: var(--font-display);
+      font-size: 20px;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .below-chart {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 10px;
+      color: var(--text-muted);
+      font-size: 11px;
+    }
+
+    .trend-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 9px;
+      border-radius: 999px;
+      background: rgba(230, 0, 18, 0.08);
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .trend-chip.loss {
+      background: rgba(16, 161, 95, 0.09);
+      color: var(--loss);
+    }
+
+    .mobile-ranking { display: none; }
+
+    @media (max-width: 900px) {
+      .sidebar { display: none; }
+      .content { padding: 16px; padding-top: 70px; }
+      .mobile-topbar {
+        display: flex;
+        position: fixed;
+        z-index: 30;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 56px;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 16px;
+        background: rgba(255, 255, 255, 0.96);
+        border-bottom: 1px solid var(--border);
+        box-shadow: 0 10px 30px rgba(31, 37, 48, 0.06);
+      }
+      .mobile-topbar h1 {
+        margin: 0;
+        font-family: var(--font-display);
+        font-size: 18px;
+      }
+      .hamburger {
+        width: 34px;
+        height: 34px;
+        border: 0;
+        background: transparent;
+        color: var(--text-secondary);
+        display: grid;
+        place-items: center;
+        font-size: 22px;
+      }
+      .summary-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .ranking-card { display: none; }
+      .mobile-ranking {
+        display: grid;
+        gap: 8px;
+      }
+      .mobile-user {
+        border-radius: 14px;
+        padding: 12px;
+      }
+      .mobile-user-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        font-size: 14px;
+        font-weight: 700;
+      }
+      .mobile-user-meta {
+        margin-top: 6px;
+        display: flex;
+        gap: 8px;
+        color: var(--text-muted);
+        font-size: 11px;
+      }
+      .chart-section-header {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .range-pill { align-self: flex-start; }
+      .charts-grid {
+        grid-template-columns: 1fr;
+      }
+      .chart-card {
+        padding: 14px;
+        min-height: 356px;
+      }
+      .chart-topline {
+        flex-direction: column;
+      }
+      .kpi-cluster { justify-content: flex-start; }
+      .chart-frame { height: 218px; }
+      .focus-note {
+        right: 14px;
+        top: 76px;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .content { padding-left: 12px; padding-right: 12px; }
+      .dashboard { gap: 20px; }
+      .summary-grid { gap: 10px; }
+      .stat-card { padding: 14px; min-height: 78px; }
+      .stat-label { font-size: 12px; }
+      .stat-value { font-size: 23px; }
+      .section-heading {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .chart-section h2 { font-size: 18px; }
+      .chart-card { border-radius: 16px; }
+      .mini-kpi { min-width: 78px; }
+      .x-axis span:nth-child(even) { display: none; }
+      .below-chart { align-items: flex-start; flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <div class="mobile-topbar">
+    <button class="hamburger" aria-label="打开菜单">☰</button>
+    <h1>总览</h1>
+    <button class="hamburger" aria-label="刷新">↻</button>
+  </div>
+
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand"><span>嗨</span>起来 <small>管理后台</small></div>
+      <nav class="nav" aria-label="管理后台导航">
+        <div class="nav-item active"><span class="nav-icon"></span>总览</div>
+        <div class="nav-item"><span class="nav-icon"></span>下注管理</div>
+        <div class="nav-item"><span class="nav-icon"></span>下注详情</div>
+        <div class="nav-item"><span class="nav-icon"></span>玩家管理</div>
+        <div class="nav-item"><span class="nav-icon"></span>赛事管理</div>
+        <div class="nav-item"><span class="nav-icon"></span>赛果查看</div>
+        <div class="nav-item"><span class="nav-icon"></span>兑奖管理</div>
+      </nav>
+      <div class="back-link">← 返回玩家端</div>
+    </aside>
+
+    <main class="content">
+      <div class="dashboard">
+        <section class="summary-grid" aria-label="总览统计">
+          <article class="stat-card glass">
+            <div class="stat-label">总下注额</div>
+            <div class="stat-value">16842.0</div>
+          </article>
+          <article class="stat-card glass">
+            <div class="stat-label">总赔付</div>
+            <div class="stat-value text-accent">19236.5</div>
+          </article>
+          <article class="stat-card glass">
+            <div class="stat-label">平台盈利</div>
+            <div class="stat-value text-loss">-2394.5</div>
+          </article>
+          <article class="stat-card glass">
+            <div class="stat-label">已下注</div>
+            <div class="stat-value">428</div>
+          </article>
+          <article class="stat-card glass">
+            <div class="stat-label">已中奖</div>
+            <div class="stat-value text-accent">76</div>
+          </article>
+          <article class="stat-card glass">
+            <div class="stat-label">未中奖</div>
+            <div class="stat-value">109</div>
+          </article>
+        </section>
+
+        <section aria-label="用户排名">
+          <div class="section-heading">
+            <div>
+              <h2>用户排名</h2>
+              <p>点击表头可按对应指标排序</p>
+            </div>
+            <div class="small-muted">共 18 人</div>
+          </div>
+
+          <div class="ranking-card glass">
+            <table>
+              <thead>
+                <tr>
+                  <th>排名</th>
+                  <th>昵称</th>
+                  <th>投注额</th>
+                  <th>中奖额</th>
+                  <th>总购买场次</th>
+                  <th>中奖场次</th>
+                  <th>投注盈亏</th>
+                  <th>中奖率</th>
+                  <th>回报率</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td class="rank">1</td><td>小陈</td><td>2860.0</td><td>5128.0</td><td>42</td><td>11</td><td class="profit-plus">+2268.0</td><td>26.2%</td><td>179.3%</td></tr>
+                <tr><td class="rank">2</td><td>Eric</td><td>1980.0</td><td>2842.5</td><td>36</td><td>8</td><td class="profit-plus">+862.5</td><td>22.2%</td><td>143.6%</td></tr>
+                <tr><td class="rank">3</td><td>老王</td><td>3320.0</td><td>3628.0</td><td>58</td><td>12</td><td class="profit-plus">+308.0</td><td>20.7%</td><td>109.3%</td></tr>
+                <tr><td>4</td><td>阿豪</td><td>1260.0</td><td>1020.0</td><td>27</td><td>4</td><td class="profit-minus">-240.0</td><td>14.8%</td><td>81.0%</td></tr>
+                <tr><td>5</td><td>Kelly</td><td>1640.0</td><td>980.0</td><td>31</td><td>5</td><td class="profit-minus">-660.0</td><td>16.1%</td><td>59.8%</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="mobile-ranking">
+            <article class="mobile-user glass">
+              <div class="mobile-user-top"><span><span class="rank">1</span> 小陈</span><span class="profit-plus">+2268.0</span></div>
+              <div class="mobile-user-meta"><span>42 场</span><span>中奖率 26.2%</span><span>投注 2860.0</span></div>
+            </article>
+            <article class="mobile-user glass">
+              <div class="mobile-user-top"><span><span class="rank">2</span> Eric</span><span class="profit-plus">+862.5</span></div>
+              <div class="mobile-user-meta"><span>36 场</span><span>中奖率 22.2%</span><span>投注 1980.0</span></div>
+            </article>
+            <article class="mobile-user glass">
+              <div class="mobile-user-top"><span><span class="rank">3</span> 老王</span><span class="profit-plus">+308.0</span></div>
+              <div class="mobile-user-meta"><span>58 场</span><span>中奖率 20.7%</span><span>投注 3320.0</span></div>
+            </article>
+          </div>
+        </section>
+
+        <section class="chart-section" data-screen-label="admin-overview-profit-charts" aria-label="玩家投注盈亏曲线">
+          <div class="chart-section-header">
+            <div class="chart-section-title">
+              <span class="title-mark"></span>
+              <div>
+                <h2>玩家投注盈亏趋势</h2>
+                <p>新增在总览最底部；口径为玩家中奖金额 - 玩家投注金额，从 6 月 12 日起按日统计。</p>
+              </div>
+            </div>
+            <div class="range-pill"><span class="pulse-dot"></span>统计起始：2026/06/12</div>
+          </div>
+
+          <div class="charts-grid">
+            <article class="chart-card glass">
+              <div class="chart-topline">
+                <div class="chart-title-group">
+                  <h3 class="chart-title">玩家总投注盈亏每日曲线</h3>
+                  <div class="chart-subtitle">每日累计值，反映玩家整体盈亏走势</div>
+                </div>
+                <div class="kpi-cluster">
+                  <div class="mini-kpi">
+                    <div class="mini-kpi-label">当前累计</div>
+                    <div class="mini-kpi-value text-accent">+2394.5</div>
+                  </div>
+                  <div class="mini-kpi">
+                    <div class="mini-kpi-label">最高点</div>
+                    <div class="mini-kpi-value">+2980.0</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="legend-row">
+                <div class="legend-items">
+                  <span class="legend-item"><span class="legend-swatch"></span>累计玩家盈亏</span>
+                  <span class="legend-item"><span class="legend-swatch gold"></span>零轴参考</span>
+                </div>
+                <span>单位：元</span>
+              </div>
+
+              <div class="chart-frame">
+                <span class="axis-label top">+3k</span>
+                <span class="axis-label mid">0</span>
+                <span class="axis-label bottom">-1k</span>
+                <div class="zero-line"></div>
+                <svg class="chart-svg" viewBox="0 0 600 190" preserveAspectRatio="none" role="img" aria-label="玩家总投注盈亏每日曲线">
+                  <defs>
+                    <linearGradient id="cumulativeFill" x1="0" x2="0" y1="0" y2="1">
+                      <stop offset="0%" stop-color="#e60012" stop-opacity="0.20" />
+                      <stop offset="72%" stop-color="#e60012" stop-opacity="0.035" />
+                      <stop offset="100%" stop-color="#e60012" stop-opacity="0" />
+                    </linearGradient>
+                  </defs>
+                  <path class="area-fill" d="M0 124 C42 118 54 92 86 88 C126 82 142 112 172 106 C220 98 235 58 274 52 C313 46 330 70 360 68 C405 65 420 38 458 34 C506 30 525 62 558 58 C580 55 590 50 600 44 L600 190 L0 190 Z" />
+                  <path class="line-path" d="M0 124 C42 118 54 92 86 88 C126 82 142 112 172 106 C220 98 235 58 274 52 C313 46 330 70 360 68 C405 65 420 38 458 34 C506 30 525 62 558 58 C580 55 590 50 600 44" />
+                  <circle class="point" cx="0" cy="124" r="4" />
+                  <circle class="point" cx="86" cy="88" r="4" />
+                  <circle class="point" cx="172" cy="106" r="4" />
+                  <circle class="point" cx="274" cy="52" r="4" />
+                  <circle class="point" cx="360" cy="68" r="4" />
+                  <circle class="point" cx="458" cy="34" r="4" />
+                  <circle class="point" cx="558" cy="58" r="4" />
+                  <circle class="point" cx="600" cy="44" r="5" />
+                </svg>
+                <div class="focus-note">
+                  <div class="focus-label">06/19 累计</div>
+                  <div class="focus-value text-accent">+2394.5</div>
+                </div>
+                <div class="x-axis"><span>06/12</span><span>06/13</span><span>06/14</span><span>06/15</span><span>06/16</span><span>06/17</span><span>06/18</span><span>06/19</span></div>
+              </div>
+
+              <div class="below-chart">
+                <span>建议实现：折线 + 面积填充；正数使用红色，方便和现有盈利展示保持一致。</span>
+                <span class="trend-chip">玩家累计盈利扩大</span>
+              </div>
+            </article>
+
+            <article class="chart-card glass">
+              <div class="chart-topline">
+                <div class="chart-title-group">
+                  <h3 class="chart-title">玩家每日盈亏曲线</h3>
+                  <div class="chart-subtitle">每日独立值，突出单日波动和异常高赔付</div>
+                </div>
+                <div class="kpi-cluster">
+                  <div class="mini-kpi">
+                    <div class="mini-kpi-label">今日盈亏</div>
+                    <div class="mini-kpi-value text-accent">+586.5</div>
+                  </div>
+                  <div class="mini-kpi">
+                    <div class="mini-kpi-label">最大回撤日</div>
+                    <div class="mini-kpi-value text-loss">-320.0</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="legend-row">
+                <div class="legend-items">
+                  <span class="legend-item"><span class="legend-swatch"></span>单日盈利</span>
+                  <span class="legend-item"><span class="legend-swatch loss"></span>单日亏损</span>
+                </div>
+                <span>单位：元</span>
+              </div>
+
+              <div class="chart-frame">
+                <span class="axis-label top">+1k</span>
+                <span class="axis-label mid">0</span>
+                <span class="axis-label bottom">-600</span>
+                <div class="zero-line"></div>
+                <svg class="chart-svg" viewBox="0 0 600 190" preserveAspectRatio="none" role="img" aria-label="玩家每日盈亏曲线">
+                  <defs>
+                    <linearGradient id="dailyPositiveFill" x1="0" x2="0" y1="0" y2="1">
+                      <stop offset="0%" stop-color="#e60012" stop-opacity="0.18" />
+                      <stop offset="100%" stop-color="#e60012" stop-opacity="0" />
+                    </linearGradient>
+                    <linearGradient id="dailyNegativeFill" x1="0" x2="0" y1="1" y2="0">
+                      <stop offset="0%" stop-color="#10a15f" stop-opacity="0.18" />
+                      <stop offset="100%" stop-color="#10a15f" stop-opacity="0" />
+                    </linearGradient>
+                    <clipPath id="negativeClip"><rect x="0" y="100" width="600" height="90"></rect></clipPath>
+                  </defs>
+                  <path class="area-fill daily-positive" d="M0 116 C40 94 50 70 86 64 C121 58 138 95 172 88 C210 80 226 42 274 36 C320 30 336 96 360 98 C402 102 420 52 458 50 C504 48 520 118 558 104 C580 98 590 60 600 54 L600 100 C590 100 580 100 558 100 C520 100 504 100 458 100 C420 100 402 100 360 100 C336 100 320 100 274 100 C226 100 210 100 172 100 C138 100 121 100 86 100 C50 100 40 100 0 100 Z" />
+                  <path class="area-fill daily-negative" d="M0 116 C40 94 50 70 86 64 C121 58 138 95 172 88 C210 80 226 42 274 36 C320 30 336 96 360 98 C402 102 420 52 458 50 C504 48 520 118 558 104 C580 98 590 60 600 54 L600 100 C590 100 580 100 558 100 C520 100 504 100 458 100 C420 100 402 100 360 100 C336 100 320 100 274 100 C226 100 210 100 172 100 C138 100 121 100 86 100 C50 100 40 100 0 100 Z" clip-path="url(#negativeClip)" />
+                  <path class="line-path" d="M0 116 C40 94 50 70 86 64 C121 58 138 95 172 88 C210 80 226 42 274 36 C320 30 336 96 360 98 C402 102 420 52 458 50 C504 48 520 118 558 104 C580 98 590 60 600 54" />
+                  <circle class="point loss-point" cx="0" cy="116" r="4" />
+                  <circle class="point" cx="86" cy="64" r="4" />
+                  <circle class="point" cx="172" cy="88" r="4" />
+                  <circle class="point" cx="274" cy="36" r="4" />
+                  <circle class="point loss-point" cx="360" cy="98" r="4" />
+                  <circle class="point" cx="458" cy="50" r="4" />
+                  <circle class="point loss-point" cx="558" cy="104" r="4" />
+                  <circle class="point" cx="600" cy="54" r="5" />
+                </svg>
+                <div class="focus-note down">
+                  <div class="focus-label">06/19 单日</div>
+                  <div class="focus-value text-accent">+586.5</div>
+                </div>
+                <div class="x-axis"><span>06/12</span><span>06/13</span><span>06/14</span><span>06/15</span><span>06/16</span><span>06/17</span><span>06/18</span><span>06/19</span></div>
+              </div>
+
+              <div class="below-chart">
+                <span>建议实现：单日值穿越零轴时保留颜色区分，负值日用绿色表达玩家亏损。</span>
+                <span class="trend-chip loss">06/18 波动偏低</span>
+              </div>
+            </article>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

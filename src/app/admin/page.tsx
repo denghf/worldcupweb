@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AdminMobileTopBar } from "@/components/admin/mobile-nav";
+import { PlayerProfitCharts, type ProfitChartsData } from "@/components/admin/PlayerProfitCharts";
 
 type RankingUser = {
   nickname: string;
@@ -25,6 +26,7 @@ interface Stats {
   wonBetsCount: number;
   lostBetsCount: number;
   topUsers: RankingUser[];
+  profitCharts: ProfitChartsData;
 }
 
 type SortKey = "rank" | keyof RankingUser;
@@ -256,6 +258,8 @@ export default function AdminDashboard() {
           </>
         )}
       </div>
+
+      <PlayerProfitCharts data={stats.profitCharts} />
     </div>
   );
 }

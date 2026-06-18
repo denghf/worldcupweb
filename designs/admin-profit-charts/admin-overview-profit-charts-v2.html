@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin 总览 · 各玩家盈亏曲线 v2</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Noto+Sans+SC:wght@400;500;600;700;800&display=swap');
+
+    :root {
+      --bg-deep: #f5f6fa;
+      --bg-primary: #ffffff;
+      --bg-surface: #f8f9fc;
+      --bg-elevated: #eef1f6;
+      --bg-hover: #fff0f1;
+      --accent: #e60012;
+      --accent-dim: #ba0010;
+      --gold: #f4b42a;
+      --gold-dim: #d99510;
+      --text-primary: #1f2530;
+      --text-secondary: #667085;
+      --text-muted: #a0a7b2;
+      --border: rgba(31, 37, 48, 0.08);
+      --border-strong: rgba(31, 37, 48, 0.14);
+      --green: #10a15f;
+      --blue: #1677ff;
+      --purple: #7c3aed;
+      --orange: #f97316;
+      --cyan: #0891b2;
+      --font-display: 'Barlow Condensed', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      --font-body: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 12% 0%, rgba(230, 0, 18, 0.08), transparent 26%),
+        radial-gradient(circle at 88% 12%, rgba(244, 180, 42, 0.12), transparent 28%),
+        linear-gradient(180deg, #f8f9fc 0%, var(--bg-deep) 100%);
+      color: var(--text-primary);
+      font-family: var(--font-body);
+      -webkit-font-smoothing: antialiased;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .app-shell { display: flex; min-height: 100vh; }
+
+    .sidebar {
+      width: 224px;
+      background: var(--bg-primary);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+    }
+
+    .brand {
+      height: 64px;
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      border-bottom: 1px solid var(--border);
+      font-family: var(--font-display);
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .brand span:first-child { color: var(--accent); }
+    .brand small {
+      margin-left: 8px;
+      color: var(--text-muted);
+      font-family: var(--font-body);
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0;
+    }
+
+    .nav {
+      padding: 16px 12px;
+      display: grid;
+      gap: 4px;
+      flex: 1;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+
+    .nav-item.active {
+      background: rgba(230, 0, 18, 0.10);
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .nav-icon {
+      width: 18px;
+      height: 18px;
+      border: 1.8px solid currentColor;
+      border-radius: 5px;
+      opacity: 0.9;
+    }
+
+    .back-link {
+      border-top: 1px solid var(--border);
+      padding: 16px;
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+
+    .content {
+      flex: 1;
+      padding: 24px;
+      overflow: hidden;
+    }
+
+    .dashboard {
+      max-width: 1320px;
+      margin: 0 auto;
+      display: grid;
+      gap: 24px;
+    }
+
+    .mobile-topbar { display: none; }
+
+    .glass {
+      background: rgba(255, 255, 255, 0.96);
+      border: 1px solid var(--border);
+      box-shadow: 0 10px 30px rgba(31, 37, 48, 0.06);
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .stat-card {
+      min-height: 86px;
+      border-radius: 16px;
+      padding: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stat-card::after {
+      content: "";
+      position: absolute;
+      width: 96px;
+      height: 96px;
+      right: -46px;
+      top: -46px;
+      border-radius: 999px;
+      background: rgba(230, 0, 18, 0.05);
+    }
+
+    .stat-label { color: var(--text-muted); font-size: 14px; margin-bottom: 5px; }
+
+    .stat-value {
+      font-family: var(--font-display);
+      font-size: 26px;
+      line-height: 1;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+    }
+
+    .text-accent { color: var(--accent); }
+    .text-green { color: var(--green); }
+    .text-gold { color: var(--gold-dim); }
+
+    .section-heading {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 12px;
+    }
+
+    .section-heading h2 {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .section-heading p { margin: 3px 0 0; color: var(--text-muted); font-size: 13px; }
+    .small-muted { color: var(--text-muted); font-size: 12px; white-space: nowrap; }
+
+    .ranking-card { border-radius: 16px; overflow: hidden; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 980px;
+      font-size: 14px;
+    }
+
+    th, td {
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(31, 37, 48, 0.055);
+      text-align: right;
+    }
+
+    th:first-child, td:first-child,
+    th:nth-child(2), td:nth-child(2) { text-align: left; }
+
+    th {
+      color: var(--text-muted);
+      font-weight: 500;
+      background: linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
+    }
+
+    tr:last-child td { border-bottom: 0; }
+    .rank { color: var(--gold-dim); font-weight: 700; }
+    .profit-plus { color: var(--accent); font-weight: 700; }
+    .profit-minus { color: var(--green); font-weight: 700; }
+
+    .chart-section { margin-top: 2px; }
+
+    .chart-section-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 12px;
+    }
+
+    .chart-section-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .title-mark {
+      width: 8px;
+      height: 30px;
+      border-radius: 999px;
+      background: linear-gradient(180deg, var(--accent) 0%, var(--gold) 100%);
+      box-shadow: 0 8px 18px rgba(230, 0, 18, 0.18);
+      flex: 0 0 auto;
+    }
+
+    .chart-section h2 {
+      margin: 0;
+      font-family: var(--font-display);
+      font-size: 20px;
+      line-height: 1.05;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+    }
+
+    .chart-section p { margin: 4px 0 0; color: var(--text-muted); font-size: 13px; }
+
+    .range-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--bg-primary);
+      color: var(--text-secondary);
+      font-size: 12px;
+      white-space: nowrap;
+      box-shadow: 0 6px 16px rgba(31, 37, 48, 0.04);
+    }
+
+    .pulse-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: var(--accent);
+      box-shadow: 0 0 0 4px rgba(230, 0, 18, 0.10);
+    }
+
+    .player-filter-card {
+      border-radius: 18px;
+      padding: 14px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .filter-topline {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .filter-title {
+      font-size: 13px;
+      color: var(--text-secondary);
+      font-weight: 700;
+    }
+
+    .filter-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .action-btn {
+      border: 1px solid var(--border);
+      background: #fff;
+      color: var(--text-secondary);
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-family: inherit;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .action-btn.primary {
+      border-color: rgba(230, 0, 18, 0.18);
+      background: rgba(230, 0, 18, 0.08);
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    .player-filters {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .player-toggle {
+      --player-color: var(--accent);
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 36px;
+      padding: 7px 12px 7px 9px;
+      border-radius: 999px;
+      border: 1px solid rgba(31, 37, 48, 0.08);
+      background: #ffffff;
+      color: var(--text-primary);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.16s ease;
+    }
+
+    .player-toggle input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .player-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--player-color);
+      box-shadow: 0 0 0 4px color-mix(in srgb, var(--player-color) 12%, transparent);
+    }
+
+    .player-toggle:has(input:checked) {
+      border-color: color-mix(in srgb, var(--player-color) 34%, rgba(31, 37, 48, 0.08));
+      background: color-mix(in srgb, var(--player-color) 8%, white);
+      font-weight: 700;
+    }
+
+    .player-toggle:has(input:not(:checked)) {
+      opacity: 0.44;
+      filter: grayscale(0.25);
+    }
+
+    .charts-stack {
+      display: grid;
+      gap: 14px;
+    }
+
+    .chart-card {
+      border-radius: 18px;
+      padding: 18px;
+      overflow: hidden;
+      min-height: 420px;
+      position: relative;
+    }
+
+    .chart-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 92% 4%, rgba(230, 0, 18, 0.060), transparent 29%);
+      pointer-events: none;
+    }
+
+    .chart-card > * { position: relative; }
+
+    .chart-topline {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .chart-title { margin: 0; font-size: 15px; font-weight: 800; color: var(--text-primary); }
+    .chart-subtitle { margin-top: 3px; color: var(--text-muted); font-size: 12px; }
+
+    .kpi-cluster {
+      display: flex;
+      align-items: stretch;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .mini-kpi {
+      min-width: 92px;
+      padding: 8px 9px;
+      border-radius: 12px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      text-align: right;
+    }
+
+    .mini-kpi-label { color: var(--text-muted); font-size: 10px; margin-bottom: 2px; }
+    .mini-kpi-value { font-family: var(--font-display); font-weight: 800; font-size: 18px; line-height: 1; }
+
+    .chart-frame {
+      height: 286px;
+      border-radius: 14px;
+      border: 1px solid rgba(31, 37, 48, 0.06);
+      background:
+        linear-gradient(to right, rgba(31, 37, 48, 0.045) 1px, transparent 1px) 0 0 / 14.285% 100%,
+        linear-gradient(to bottom, rgba(31, 37, 48, 0.06) 1px, transparent 1px) 0 0 / 100% 20%,
+        linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .zero-line {
+      position: absolute;
+      left: 52px;
+      right: 18px;
+      top: 52%;
+      border-top: 1px dashed rgba(31, 37, 48, 0.24);
+    }
+
+    .axis-label {
+      position: absolute;
+      left: 12px;
+      color: var(--text-muted);
+      font-size: 10px;
+      line-height: 1;
+    }
+
+    .axis-label.top { top: 15px; }
+    .axis-label.mid { top: 50.5%; }
+    .axis-label.bottom { bottom: 24px; }
+
+    .chart-svg {
+      position: absolute;
+      inset: 14px 12px 28px 50px;
+      width: calc(100% - 62px);
+      height: calc(100% - 42px);
+      overflow: visible;
+    }
+
+    .x-axis {
+      position: absolute;
+      left: 52px;
+      right: 12px;
+      bottom: 9px;
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      color: var(--text-muted);
+      font-size: 10px;
+    }
+
+    .x-axis span { text-align: center; }
+
+    .player-line {
+      fill: none;
+      stroke: var(--line-color);
+      stroke-width: 3;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      filter: drop-shadow(0 7px 9px rgba(31, 37, 48, 0.10));
+      transition: opacity 0.2s ease;
+    }
+
+    .player-line.is-muted,
+    .player-point.is-muted { opacity: 0.13; }
+
+    .player-point {
+      fill: #ffffff;
+      stroke: var(--line-color);
+      stroke-width: 2.3;
+      transition: opacity 0.2s ease;
+    }
+
+    .daily-bars {
+      position: absolute;
+      inset: 14px 12px 28px 50px;
+      display: grid;
+      grid-template-columns: repeat(8, minmax(58px, 1fr));
+      align-items: stretch;
+      gap: 10px;
+      overflow: hidden;
+    }
+
+    .bar-day {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      align-items: center;
+      gap: 3px;
+      min-width: 0;
+    }
+
+    .player-bar {
+      --bar-color: var(--accent);
+      position: relative;
+      height: 100%;
+      transition: opacity 0.2s ease, filter 0.2s ease;
+    }
+
+    .player-bar.is-muted { opacity: 0.12; filter: grayscale(0.3); }
+
+    .player-bar::before,
+    .player-bar::after {
+      content: "";
+      position: absolute;
+      left: 10%;
+      right: 10%;
+      border-radius: 6px 6px 2px 2px;
+      background: linear-gradient(180deg, color-mix(in srgb, var(--bar-color) 82%, white) 0%, var(--bar-color) 100%);
+      box-shadow: 0 5px 10px color-mix(in srgb, var(--bar-color) 16%, transparent);
+    }
+
+    .player-bar::before {
+      bottom: 48%;
+      height: var(--pos, 0%);
+    }
+
+    .player-bar::after {
+      top: 52%;
+      height: var(--neg, 0%);
+      border-radius: 2px 2px 6px 6px;
+      background: linear-gradient(180deg, var(--bar-color) 0%, color-mix(in srgb, var(--bar-color) 76%, #1f2530) 100%);
+      opacity: 0.9;
+    }
+
+    .hover-card {
+      position: absolute;
+      right: 18px;
+      top: 78px;
+      min-width: 168px;
+      padding: 10px;
+      border-radius: 13px;
+      background: rgba(255, 255, 255, 0.93);
+      border: 1px solid rgba(31, 37, 48, 0.08);
+      box-shadow: 0 12px 28px rgba(31, 37, 48, 0.10);
+      backdrop-filter: blur(10px);
+    }
+
+    .hover-card.down { top: auto; bottom: 52px; }
+    .hover-title { color: var(--text-muted); font-size: 10px; margin-bottom: 7px; }
+    .hover-list { display: grid; gap: 5px; }
+
+    .hover-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 11px;
+    }
+
+    .hover-name { display: inline-flex; align-items: center; gap: 6px; color: var(--text-secondary); }
+    .hover-dot { width: 7px; height: 7px; border-radius: 999px; background: var(--row-color); }
+    .hover-value { font-family: var(--font-display); font-size: 15px; font-weight: 800; color: var(--text-primary); }
+
+    .below-chart {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 10px;
+      color: var(--text-muted);
+      font-size: 11px;
+    }
+
+    .hint-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 9px;
+      border-radius: 999px;
+      background: rgba(230, 0, 18, 0.08);
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .mobile-ranking { display: none; }
+
+    @media (max-width: 900px) {
+      .sidebar { display: none; }
+      .content { padding: 16px; padding-top: 70px; }
+      .mobile-topbar {
+        display: flex;
+        position: fixed;
+        z-index: 30;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 56px;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 16px;
+        background: rgba(255, 255, 255, 0.96);
+        border-bottom: 1px solid var(--border);
+        box-shadow: 0 10px 30px rgba(31, 37, 48, 0.06);
+      }
+      .mobile-topbar h1 { margin: 0; font-family: var(--font-display); font-size: 18px; }
+      .hamburger {
+        width: 34px;
+        height: 34px;
+        border: 0;
+        background: transparent;
+        color: var(--text-secondary);
+        display: grid;
+        place-items: center;
+        font-size: 22px;
+      }
+      .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .ranking-card { display: none; }
+      .mobile-ranking { display: grid; gap: 8px; }
+      .mobile-user { border-radius: 14px; padding: 12px; }
+      .mobile-user-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 14px; font-weight: 700; }
+      .mobile-user-meta { margin-top: 6px; display: flex; gap: 8px; color: var(--text-muted); font-size: 11px; }
+      .chart-section-header { flex-direction: column; align-items: stretch; }
+      .range-pill { align-self: flex-start; }
+      .chart-card { padding: 14px; min-height: 390px; }
+      .chart-topline { flex-direction: column; }
+      .kpi-cluster { justify-content: flex-start; }
+      .chart-frame { height: 250px; }
+      .hover-card { right: 12px; top: 76px; min-width: 148px; }
+      .below-chart { align-items: flex-start; flex-direction: column; }
+    }
+
+    @media (max-width: 520px) {
+      .content { padding-left: 12px; padding-right: 12px; }
+      .dashboard { gap: 20px; }
+      .summary-grid { gap: 10px; }
+      .stat-card { padding: 14px; min-height: 78px; }
+      .stat-label { font-size: 12px; }
+      .stat-value { font-size: 23px; }
+      .section-heading { align-items: flex-start; flex-direction: column; gap: 4px; }
+      .chart-section h2 { font-size: 18px; }
+      .player-filters { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 2px; }
+      .player-toggle { white-space: nowrap; }
+      .chart-card { border-radius: 16px; }
+      .mini-kpi { min-width: 78px; }
+      .x-axis span:nth-child(even) { display: none; }
+      .hover-card { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="mobile-topbar">
+    <button class="hamburger" aria-label="打开菜单">☰</button>
+    <h1>总览</h1>
+    <button class="hamburger" aria-label="刷新">↻</button>
+  </div>
+
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand"><span>嗨</span>起来 <small>管理后台</small></div>
+      <nav class="nav" aria-label="管理后台导航">
+        <div class="nav-item active"><span class="nav-icon"></span>总览</div>
+        <div class="nav-item"><span class="nav-icon"></span>下注管理</div>
+        <div class="nav-item"><span class="nav-icon"></span>下注详情</div>
+        <div class="nav-item"><span class="nav-icon"></span>玩家管理</div>
+        <div class="nav-item"><span class="nav-icon"></span>赛事管理</div>
+        <div class="nav-item"><span class="nav-icon"></span>赛果查看</div>
+        <div class="nav-item"><span class="nav-icon"></span>兑奖管理</div>
+      </nav>
+      <div class="back-link">← 返回玩家端</div>
+    </aside>
+
+    <main class="content">
+      <div class="dashboard">
+        <section class="summary-grid" aria-label="总览统计">
+          <article class="stat-card glass"><div class="stat-label">总下注额</div><div class="stat-value">16842.0</div></article>
+          <article class="stat-card glass"><div class="stat-label">总赔付</div><div class="stat-value text-accent">19236.5</div></article>
+          <article class="stat-card glass"><div class="stat-label">平台盈利</div><div class="stat-value text-green">-2394.5</div></article>
+          <article class="stat-card glass"><div class="stat-label">已下注</div><div class="stat-value">428</div></article>
+          <article class="stat-card glass"><div class="stat-label">已中奖</div><div class="stat-value text-accent">76</div></article>
+          <article class="stat-card glass"><div class="stat-label">未中奖</div><div class="stat-value">109</div></article>
+        </section>
+
+        <section aria-label="用户排名">
+          <div class="section-heading">
+            <div>
+              <h2>用户排名</h2>
+              <p>点击表头可按对应指标排序</p>
+            </div>
+            <div class="small-muted">共 18 人</div>
+          </div>
+
+          <div class="ranking-card glass">
+            <table>
+              <thead>
+                <tr>
+                  <th>排名</th><th>昵称</th><th>投注额</th><th>中奖额</th><th>总购买场次</th><th>中奖场次</th><th>投注盈亏</th><th>中奖率</th><th>回报率</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td class="rank">1</td><td>小陈</td><td>2860.0</td><td>5128.0</td><td>42</td><td>11</td><td class="profit-plus">+2268.0</td><td>26.2%</td><td>179.3%</td></tr>
+                <tr><td class="rank">2</td><td>Eric</td><td>1980.0</td><td>2842.5</td><td>36</td><td>8</td><td class="profit-plus">+862.5</td><td>22.2%</td><td>143.6%</td></tr>
+                <tr><td class="rank">3</td><td>老王</td><td>3320.0</td><td>3628.0</td><td>58</td><td>12</td><td class="profit-plus">+308.0</td><td>20.7%</td><td>109.3%</td></tr>
+                <tr><td>4</td><td>阿豪</td><td>1260.0</td><td>1020.0</td><td>27</td><td>4</td><td class="profit-minus">-240.0</td><td>14.8%</td><td>81.0%</td></tr>
+                <tr><td>5</td><td>Kelly</td><td>1640.0</td><td>980.0</td><td>31</td><td>5</td><td class="profit-minus">-660.0</td><td>16.1%</td><td>59.8%</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="mobile-ranking">
+            <article class="mobile-user glass"><div class="mobile-user-top"><span><span class="rank">1</span> 小陈</span><span class="profit-plus">+2268.0</span></div><div class="mobile-user-meta"><span>42 场</span><span>中奖率 26.2%</span><span>投注 2860.0</span></div></article>
+            <article class="mobile-user glass"><div class="mobile-user-top"><span><span class="rank">2</span> Eric</span><span class="profit-plus">+862.5</span></div><div class="mobile-user-meta"><span>36 场</span><span>中奖率 22.2%</span><span>投注 1980.0</span></div></article>
+            <article class="mobile-user glass"><div class="mobile-user-top"><span><span class="rank">3</span> 老王</span><span class="profit-plus">+308.0</span></div><div class="mobile-user-meta"><span>58 场</span><span>中奖率 20.7%</span><span>投注 3320.0</span></div></article>
+          </div>
+        </section>
+
+        <section class="chart-section" data-screen-label="admin-overview-player-profit-charts-v2" aria-label="各玩家投注盈亏曲线">
+          <div class="chart-section-header">
+            <div class="chart-section-title">
+              <span class="title-mark"></span>
+              <div>
+                <h2>各玩家投注盈亏趋势</h2>
+                <p>新增在总览最底部；只展示未禁用玩家。每个玩家代表一个玩家，口径为玩家中奖金额 - 玩家投注金额。</p>
+              </div>
+            </div>
+            <div class="range-pill"><span class="pulse-dot"></span>统计起始：2026/06/12</div>
+          </div>
+
+          <div class="player-filter-card glass" aria-label="玩家曲线筛选">
+            <div class="filter-topline">
+              <div class="filter-title">曲线筛选 · 未禁用玩家 6 人</div>
+              <div class="filter-actions">
+                <button class="action-btn primary" type="button">全选</button>
+                <button class="action-btn" type="button">仅看盈利</button>
+                <button class="action-btn" type="button">清空</button>
+              </div>
+            </div>
+            <div class="player-filters">
+              <label class="player-toggle" style="--player-color: var(--accent);"><input type="checkbox" checked /><span class="player-dot"></span>小陈</label>
+              <label class="player-toggle" style="--player-color: var(--blue);"><input type="checkbox" checked /><span class="player-dot"></span>Eric</label>
+              <label class="player-toggle" style="--player-color: var(--purple);"><input type="checkbox" checked /><span class="player-dot"></span>老王</label>
+              <label class="player-toggle" style="--player-color: var(--orange);"><input type="checkbox" checked /><span class="player-dot"></span>阿豪</label>
+              <label class="player-toggle" style="--player-color: var(--green);"><input type="checkbox" /><span class="player-dot"></span>Kelly</label>
+              <label class="player-toggle" style="--player-color: var(--cyan);"><input type="checkbox" checked /><span class="player-dot"></span>Leo</label>
+            </div>
+          </div>
+
+          <div class="charts-stack">
+            <article class="chart-card glass">
+              <div class="chart-topline">
+                <div>
+                  <h3 class="chart-title">各玩家总投注盈亏每日曲线</h3>
+                  <div class="chart-subtitle">每名玩家一条累计曲线；可通过上方筛选隐藏或展示</div>
+                </div>
+                <div class="kpi-cluster">
+                  <div class="mini-kpi"><div class="mini-kpi-label">当前最高</div><div class="mini-kpi-value text-accent">小陈 +2268</div></div>
+                  <div class="mini-kpi"><div class="mini-kpi-label">当前最低</div><div class="mini-kpi-value text-green">Kelly -660</div></div>
+                </div>
+              </div>
+
+              <div class="chart-frame">
+                <span class="axis-label top">+2.5k</span>
+                <span class="axis-label mid">0</span>
+                <span class="axis-label bottom">-1k</span>
+                <div class="zero-line"></div>
+                <svg class="chart-svg" viewBox="0 0 760 230" preserveAspectRatio="none" role="img" aria-label="各玩家总投注盈亏每日曲线">
+                  <path class="player-line" style="--line-color: var(--accent);" d="M0 138 C70 132 82 94 110 90 C178 82 192 118 218 108 C294 78 320 58 392 54 C472 50 492 78 546 70 C630 56 660 42 760 34" />
+                  <path class="player-line" style="--line-color: var(--blue);" d="M0 120 C64 116 92 100 110 92 C176 64 198 78 218 72 C292 68 326 92 392 84 C466 78 506 66 546 62 C626 54 678 60 760 74" />
+                  <path class="player-line" style="--line-color: var(--purple);" d="M0 128 C60 124 88 130 110 116 C178 110 198 96 218 98 C292 100 318 86 392 78 C464 70 500 88 546 82 C620 74 674 70 760 86" />
+                  <path class="player-line" style="--line-color: var(--orange);" d="M0 130 C58 136 88 146 110 144 C174 154 196 138 218 132 C292 126 324 136 392 142 C468 150 502 134 546 132 C624 126 674 138 760 142" />
+                  <path class="player-line is-muted" style="--line-color: var(--green);" d="M0 132 C58 146 88 158 110 160 C176 172 196 164 218 168 C292 176 326 174 392 170 C468 166 504 178 546 182 C620 184 674 176 760 180" />
+                  <path class="player-line" style="--line-color: var(--cyan);" d="M0 132 C62 128 90 136 110 126 C174 120 196 112 218 116 C290 122 322 116 392 112 C464 108 500 112 546 104 C622 96 676 106 760 98" />
+
+                  <circle class="player-point" style="--line-color: var(--accent);" cx="760" cy="34" r="4.5" />
+                  <circle class="player-point" style="--line-color: var(--blue);" cx="760" cy="74" r="4.5" />
+                  <circle class="player-point" style="--line-color: var(--purple);" cx="760" cy="86" r="4.5" />
+                  <circle class="player-point" style="--line-color: var(--orange);" cx="760" cy="142" r="4.5" />
+                  <circle class="player-point is-muted" style="--line-color: var(--green);" cx="760" cy="180" r="4.5" />
+                  <circle class="player-point" style="--line-color: var(--cyan);" cx="760" cy="98" r="4.5" />
+                </svg>
+                <div class="hover-card">
+                  <div class="hover-title">06/19 累计盈亏</div>
+                  <div class="hover-list">
+                    <div class="hover-row"><span class="hover-name"><span class="hover-dot" style="--row-color: var(--accent);"></span>小陈</span><span class="hover-value">+2268</span></div>
+                    <div class="hover-row"><span class="hover-name"><span class="hover-dot" style="--row-color: var(--blue);"></span>Eric</span><span class="hover-value">+862.5</span></div>
+                    <div class="hover-row"><span class="hover-name"><span class="hover-dot" style="--row-color: var(--purple);"></span>老王</span><span class="hover-value">+308</span></div>
+                    <div class="hover-row"><span class="hover-name"><span class="hover-dot" style="--row-color: var(--orange);"></span>阿豪</span><span class="hover-value">-240</span></div>
+                  </div>
+                </div>
+                <div class="x-axis"><span>06/12</span><span>06/13</span><span>06/14</span><span>06/15</span><span>06/16</span><span>06/17</span><span>06/18</span><span>06/19</span></div>
+              </div>
+
+              <div class="below-chart">
+                <span>实现建议：玩家禁用状态变化后列表自动更新；默认展示全部未禁用玩家，过多时支持横向滚动筛选。</span>
+                <span class="hint-chip">当前显示 5 / 6 个玩家</span>
+              </div>
+            </article>
+
+            <article class="chart-card glass">
+              <div class="chart-topline">
+                <div>
+                  <h3 class="chart-title">各玩家每日盈亏柱状图</h3>
+                  <div class="chart-subtitle">每名玩家一组柱；正值向上、负值向下，便于比较单日波动</div>
+                </div>
+                <div class="kpi-cluster">
+                  <div class="mini-kpi"><div class="mini-kpi-label">今日最高</div><div class="mini-kpi-value text-accent">小陈 +640</div></div>
+                  <div class="mini-kpi"><div class="mini-kpi-label">今日最低</div><div class="mini-kpi-value text-green">阿豪 -180</div></div>
+                </div>
+              </div>
+
+              <div class="chart-frame">
+                <span class="axis-label top">+800</span>
+                <span class="axis-label mid">0</span>
+                <span class="axis-label bottom">-400</span>
+                <div class="zero-line"></div>
+                <div class="daily-bars" role="img" aria-label="各玩家每日盈亏柱状图">
+                  <div class="bar-day">
+                    <span class="player-bar" style="--bar-color: var(--accent); --neg: 11%;"></span>
+                    <span class="player-bar" style="--bar-color: var(--blue); --pos: 18%;"></span>
+                    <span class="player-bar" style="--bar-color: var(--purple); --pos: 6%;"></span>
+                    <span class="player-bar" style="--bar-color: var(--orange); --neg: 16%;"></span>
+                    <span class="player-bar is-muted" style="--bar-color: var(--green); --neg: 22%;"></span>
+                    <span class="player-bar" style="--bar-color: var(--cyan); --pos: 8%;"></span>
+                  </div>
+                  <div class="bar-day">
+                    <span class="player-bar" style="--bar-color: var(--accent); --pos: 42%;"></span>
+                    <span class="player-bar" style="--bar-color: var(--blue); --pos: 28%;"></span>
+                    <span class="player-bar" style="--bar-color: var(--purple); --neg: 8%;"></span>
+                    <span class="player-bar" style="--bar-color: var(--orange); --neg: 31%;"></span>
+                    <span class="player-bar is-muted" style="--bar-color: var(--green); --neg: 34%;"></span>
+                    <span class="player-bar" style="--bar-color: var(--cyan); --pos: 12%;"></span>
+                  </div>
+                  <div class="bar-day">
+                    <span class="player-bar" style="--bar-color: var(--accent); --pos: 12%;"></span>
+                    <span class="player-bar" style="--bar-color: var(--blue); --pos: 6%;"></span>
+                    <span class="player-bar" style="--bar-color: var(--purple); --pos: 16%;"></span>
+                    <span class="player-bar" style="--bar-color: var(--orange); --neg: 7%;"></span>
+                    <span class="player-bar is-muted" style="--bar-color: var(--green); --neg: 20%;"></span>
+                    <span class="player-bar" style="--bar-color: var(--cyan); --neg: 10%;"></span>
+                  </div>
+                  <div class="bar-day">
+                    <span class="player-bar" style="--bar-color: var(--accent); --pos: 55%;"></span>
+                    <span class="player-bar" style="--bar-color: var(--blue); --neg: 12%;"></span>
+                    <span class="player-bar" style="--bar-color: var(--purple); --pos: 10%;"></span>
+                    <span class="player-bar" style="--bar-color: var(--orange); --pos: 14%;"></span>
+                    <span class="player-bar is-muted" style="--bar-color: var(--green); --neg: 28%;"></span>
+                    <span class="player-bar" style="--bar-color: var(--cyan); --pos: 18%;"></span>
+                  </div>
+                  <div class="bar-day">
+                    <span class="player-bar" style="--bar-color: var(--accent); --neg: 6%;"></span>
+                    <span class="player-bar" style="--bar-color: var(--blue); --pos: 12%;"></span>
+                    <span class="player-bar" style="--bar-color: var(--purple); --neg: 6%;"></span>
+                    <span class="player-bar" style="--bar-color: var(--orange); --neg: 26%;"></span>
+                    <span class="player-bar is-muted" style="--bar-color: var(--green); --neg: 36%;"></span>
+                    <span class="player-bar" style="--bar-color: var(--cyan); --pos: 4%;"></span>
+                  </div>
+                  <div class="bar-day">
+                    <span class="player-bar" style="--bar-color: var(--accent); --pos: 34%;"></span>
+                    <span class="player-bar" style="--bar-color: var(--blue); --pos: 16%;"></span>
+                    <span class="player-bar" style="--bar-color: var(--purple); --pos: 24%;"></span>
+                    <span class="player-bar" style="--bar-color: var(--orange); --pos: 6%;"></span>
+                    <span class="player-bar is-muted" style="--bar-color: var(--green); --neg: 42%;"></span>
+                    <span class="player-bar" style="--bar-color: var(--cyan); --pos: 26%;"></span>
+                  </div>
+                  <div class="bar-day">
+                    <span class="player-bar" style="--bar-color: var(--accent); --pos: 22%;"></span>
+                    <span class="player-bar" style="--bar-color: var(--blue); --neg: 5%;"></span>
+                    <span class="player-bar" style="--bar-color: var(--purple); --pos: 8%;"></span>
+                    <span class="player-bar" style="--bar-color: var(--orange); --neg: 18%;"></span>
+                    <span class="player-bar is-muted" style="--bar-color: var(--green); --neg: 16%;"></span>
+                    <span class="player-bar" style="--bar-color: var(--cyan); --neg: 8%;"></span>
+                  </div>
+                  <div class="bar-day">
+                    <span class="player-bar" style="--bar-color: var(--accent); --pos: 48%;"></span>
+                    <span class="player-bar" style="--bar-color: var(--blue); --pos: 8%;"></span>
+                    <span class="player-bar" style="--bar-color: var(--purple); --pos: 5%;"></span>
+                    <span class="player-bar" style="--bar-color: var(--orange); --neg: 20%;"></span>
+                    <span class="player-bar is-muted" style="--bar-color: var(--green); --neg: 12%;"></span>
+                    <span class="player-bar" style="--bar-color: var(--cyan); --pos: 13%;"></span>
+                  </div>
+                </div>
+                <div class="hover-card down">
+                  <div class="hover-title">06/19 每日盈亏</div>
+                  <div class="hover-list">
+                    <div class="hover-row"><span class="hover-name"><span class="hover-dot" style="--row-color: var(--accent);"></span>小陈</span><span class="hover-value">+640</span></div>
+                    <div class="hover-row"><span class="hover-name"><span class="hover-dot" style="--row-color: var(--blue);"></span>Eric</span><span class="hover-value">+80</span></div>
+                    <div class="hover-row"><span class="hover-name"><span class="hover-dot" style="--row-color: var(--orange);"></span>阿豪</span><span class="hover-value">-180</span></div>
+                    <div class="hover-row"><span class="hover-name"><span class="hover-dot" style="--row-color: var(--cyan);"></span>Leo</span><span class="hover-value">+110</span></div>
+                  </div>
+                </div>
+                <div class="x-axis"><span>06/12</span><span>06/13</span><span>06/14</span><span>06/15</span><span>06/16</span><span>06/17</span><span>06/18</span><span>06/19</span></div>
+              </div>
+
+              <div class="below-chart">
+                <span>实现建议：筛选状态同时作用于曲线图和柱状图；柱子以零轴为基准，正负波动更直观。</span>
+                <span class="hint-chip">同一筛选同步柱状图</span>
+              </div>
+            </article>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const toggles = Array.from(document.querySelectorAll('.player-toggle input'));
+    const lineGroups = ['--accent', '--blue', '--purple', '--orange', '--green', '--cyan'];
+
+    function refreshMutedState() {
+      toggles.forEach((toggle, index) => {
+        const colorVar = lineGroups[index];
+        const related = Array.from(document.querySelectorAll(`.player-line[style*="${colorVar}"], .player-point[style*="${colorVar}"], .player-bar[style*="${colorVar}"]`));
+        related.forEach((node) => node.classList.toggle('is-muted', !toggle.checked));
+      });
+      const visible = toggles.filter((toggle) => toggle.checked).length;
+      document.querySelectorAll('.hint-chip')[0].textContent = `当前显示 ${visible} / ${toggles.length} 个玩家`;
+    }
+
+    toggles.forEach((toggle) => toggle.addEventListener('change', refreshMutedState));
+
+    document.querySelector('.action-btn.primary').addEventListener('click', () => {
+      toggles.forEach((toggle) => { toggle.checked = true; });
+      refreshMutedState();
+    });
+
+    document.querySelectorAll('.action-btn')[1].addEventListener('click', () => {
+      toggles.forEach((toggle, index) => { toggle.checked = index < 3 || index === 5; });
+      refreshMutedState();
+    });
+
+    document.querySelectorAll('.action-btn')[2].addEventListener('click', () => {
+      toggles.forEach((toggle) => { toggle.checked = false; });
+      refreshMutedState();
+    });
+
+    refreshMutedState();
+  </script>
+</body>
+</html>

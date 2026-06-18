@@ -96,6 +96,13 @@ type PullOutcome = {
   message?: string | null;
   error?: string | null;
   items: (OddsPullItem | ResultsPullItem)[];
+  merge?: {
+    minDate: string;
+    mergedGroups: number;
+    deletedMatches: number;
+    migratedBetItems: number;
+    dedupedBetItems: number;
+  };
 };
 
 type PullLog = PullOutcome & {
@@ -257,12 +264,17 @@ export default function AdminTournamentsPage() {
   };
 
   const handleDedup = async () => {
-    if (!confirm("确认删除重复赛事？将保留较早创建的记录，删除重复项及其赔率和投注。")) return;
+    if (!confirm(`将合并 6/19 及以后的重复赛事：保留最新的一条，把旧条目上的下注迁移过来。继续？`)) return;
     try {
       const res = await fetch("/api/admin/tournaments/dedup", { method: "POST" });
       const data = await res.json();
       if (data.success) {
-        alert(data.data.deleted > 0 ? `已删除 ${data.data.deleted} 条重复赛事` : "没有重复赛事");
+        const summary = data.data || {};
+        const groups = summary.mergedGroups ?? 0;
+        const msg = groups > 0
+          ? `已合并 ${groups} 组重复赛事（删除 ${summary.deletedMatches ?? 0} 条，迁移下注 ${summary.migratedBetItems ?? 0} 条，清理冲突 ${summary.dedupedBetItems ?? 0} 条）`
+          : "没有重复赛事";
+        alert(msg);
         loadData();
       } else {
         alert(data.error || "清理失败");
@@ -623,7 +635,7 @@ export default function AdminTournamentsPage() {
         <div className="space-y-1.5">
           <MobileActionButton label={fetch500Loading ? "抓取中..." : "更新世界杯赔率"} disabled={fetch500Loading} onClick={() => { setShowMobileActions(false); handleFetch500(); }} />
           <MobileActionButton label={fetchResultsLoading ? "抓取中..." : "更新赛果"} disabled={fetchResultsLoading} onClick={() => { setShowMobileActions(false); handleFetchResults(); }} />
-          <MobileActionButton label="删除重复赛事" danger onClick={() => { setShowMobileActions(false); handleDedup(); }} />
+          <MobileActionButton label="合并重复赛事（≥6/19）" danger onClick={() => { setShowMobileActions(false); handleDedup(); }} />
           <MobileActionButton label="从本地数据导入" onClick={() => { setShowMobileActions(false); setShowImport(true); }} />
           <MobileActionButton label="查看定时拉取日志" onClick={() => { setShowMobileActions(false); setShowLogSheet(true); }} />
         </div>
@@ -659,7 +671,7 @@ export default function AdminTournamentsPage() {
             onClick={handleDedup}
             className="px-4 py-2 rounded-lg text-sm bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors"
           >
-            删除重复赛事
+            合并重复赛事（≥6/19）
           </button>
           <button
             onClick={() => setShowImport(true)}
@@ -1144,6 +1156,15 @@ function PullOutcomeContent({ outcome }: { outcome: PullOutcome }) {
             : `抓取 ${outcome.fetched} 场赛果，已结算 ${outcome.settled ?? 0} 场，跳过 ${outcome.skipped ?? 0} 场`)}
         </div>
       </div>
+
+      {isOdds && outcome.merge && outcome.merge.mergedGroups > 0 && (
+        <div className="rounded-xl bg-amber-500/10 px-4 py-3 text-sm text-amber-600">
+          <div className="font-semibold">已合并重复赛事 {outcome.merge.mergedGroups} 组</div>
+          <div className="mt-1 text-xs text-text-secondary">
+            删除 {outcome.merge.deletedMatches} 条 · 迁移下注 {outcome.merge.migratedBetItems} 条 · 清理冲突 {outcome.merge.dedupedBetItems} 条（{outcome.merge.minDate} 起）
+          </div>
+        </div>
+      )}
 
       {items.length === 0 ? (
         <div className="text-text-muted text-sm py-6 text-center">暂无赛事明细</div>

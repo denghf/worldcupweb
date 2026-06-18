@@ -1,0 +1,23 @@
+{
+  "type": "design",
+  "designSystems": [],
+  "primaryDesignSystem": null,
+  "assets": {
+    "Admin 总览玩家盈亏曲线": {
+      "versions": [
+        {
+          "path": "admin-overview-profit-charts.html",
+          "createdAt": "2026-06-18T02:35:04.109Z",
+          "status": "needs-review"
+        },
+        {
+          "path": "admin-overview-profit-charts-v2.html",
+          "createdAt": "2026-06-18T02:58:14.383Z",
+          "status": "needs-review"
+        }
+      ]
+    }
+  },
+  "createdAt": "2026-06-18T02:35:04.110Z",
+  "updatedAt": "2026-06-18T03:08:21.848Z"
+}
