@@ -14,12 +14,12 @@ interface Ranking {
   winRate: number;
 }
 
-type SortKey = "netProfit" | "winRate" | "totalBetAmount";
+type SortKey = "totalWinAmount" | "netProfit" | "winRate" | "totalBetAmount";
 
 export default function RankingPage() {
   const [rankings, setRankings] = useState<Ranking[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sortBy, setSortBy] = useState<SortKey>("netProfit");
+  const [sortBy, setSortBy] = useState<SortKey>("totalWinAmount");
 
   useEffect(() => {
     fetch("/api/ranking")
@@ -40,6 +40,7 @@ export default function RankingPage() {
   }, []);
 
   const sorted = [...rankings].sort((a, b) => {
+    if (sortBy === "totalWinAmount") return b.totalWinAmount - a.totalWinAmount;
     if (sortBy === "netProfit") return b.netProfit - a.netProfit;
     if (sortBy === "winRate") return b.winRate - a.winRate;
     return b.totalBetAmount - a.totalBetAmount;
@@ -104,14 +105,14 @@ export default function RankingPage() {
       <div className="sticky top-0 z-30 -mx-3 mb-3 border-b border-border bg-bg-deep/95 px-3 pb-1 pt-2 backdrop-blur-xl">
         <div className="flex items-center gap-2 overflow-x-auto pb-1">
           <button
-            onClick={() => setSortBy("netProfit")}
+            onClick={() => setSortBy("totalWinAmount")}
             className={`rounded-xl px-4 py-2 text-xs font-bold transition-all ${
-              sortBy === "netProfit"
+              sortBy === "totalWinAmount"
                 ? "bg-accent text-white"
                 : "bg-white text-text-secondary"
             }`}
           >
-            总榜
+            中奖额
           </button>
           <button
             onClick={() => setSortBy("totalBetAmount")}
@@ -133,17 +134,27 @@ export default function RankingPage() {
           >
             命中率
           </button>
+          <button
+            onClick={() => setSortBy("netProfit")}
+            className={`rounded-xl px-4 py-2 text-xs font-bold transition-all ${
+              sortBy === "netProfit"
+                ? "bg-accent text-white"
+                : "bg-white text-text-secondary"
+            }`}
+          >
+            积分
+          </button>
         </div>
       </div>
 
       <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
-        <div className="grid grid-cols-[42px_1fr_60px_60px_60px_48px] border-b border-border px-3 py-2 text-[10px] font-bold text-text-muted">
+        <div className="grid grid-cols-[42px_1fr_60px_60px_48px_60px] border-b border-border px-3 py-2 text-[10px] font-bold text-text-muted">
           <span>排名</span>
           <span>用户</span>
-          <span className="text-right">积分</span>
           <span className="text-right">中奖额</span>
           <span className="text-right">投注额</span>
           <span className="text-right">命中率</span>
+          <span className="text-right">积分</span>
         </div>
         {ranked.map((player, index) => (
           <RankingRow key={player.nickname} player={player} index={index} />
@@ -159,7 +170,7 @@ function RankingRow({ player, index }: { player: Ranking; index: number }) {
   const medal = ["🥇", "🥈", "🥉"][player.rank - 1];
 
   return (
-    <div className={`grid grid-cols-[42px_1fr_60px_60px_60px_48px] items-center border-b border-border/60 px-3 py-3 last:border-0 animate-fade-in-up stagger-${Math.min(index + 1, 5)}`}>
+    <div className={`grid grid-cols-[42px_1fr_60px_60px_48px_60px] items-center border-b border-border/60 px-3 py-3 last:border-0 animate-fade-in-up stagger-${Math.min(index + 1, 5)}`}>
       <div className="text-sm font-black text-text-secondary">
         {medal ? <span className="text-lg">{medal}</span> : <span className="num pl-1 text-xs">{player.rank}</span>}
       </div>
@@ -170,12 +181,12 @@ function RankingRow({ player, index }: { player: Ranking; index: number }) {
           <div className="text-[10px] font-semibold text-text-muted">{player.totalBets} 注 · 赢 {player.totalWonBets} 注</div>
         </div>
       </div>
-      <div className={`num text-right text-sm font-black ${player.netProfit >= 0 ? "text-accent" : "text-text-secondary"}`}>
-        {player.netProfit >= 0 ? "+" : ""}{player.netProfit}
-      </div>
       <div className="num text-right text-xs font-bold text-accent">{player.totalWinAmount}</div>
       <div className="num text-right text-xs font-bold text-text-secondary">{player.totalBetAmount}</div>
       <div className="num text-right text-xs font-bold text-text-secondary">{player.winRate}%</div>
+      <div className={`num text-right text-sm font-black ${player.netProfit >= 0 ? "text-accent" : "text-text-secondary"}`}>
+        {player.netProfit >= 0 ? "+" : ""}{player.netProfit}
+      </div>
     </div>
   );
 }
