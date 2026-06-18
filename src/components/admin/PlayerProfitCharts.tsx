@@ -5,6 +5,8 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 export type ProfitChartPoint = {
   date: string;
   label: string;
+  dailyBet: number;
+  dailyWin: number;
   dailyProfit: number;
   cumulativeProfit: number;
 };
@@ -418,6 +420,8 @@ function DayDetailCard({
       .map((p) => ({
         nickname: p.nickname,
         color: p.color,
+        dailyBet: p.points[selectedDateIndex]?.dailyBet ?? 0,
+        dailyWin: p.points[selectedDateIndex]?.dailyWin ?? 0,
         daily: p.points[selectedDateIndex]?.dailyProfit ?? 0,
         cumulative: p.points[selectedDateIndex]?.cumulativeProfit ?? 0,
       }))
@@ -440,10 +444,12 @@ function DayDetailCard({
         <div className="text-text-muted text-sm py-4">请至少选择一名玩家</div>
       ) : (
         <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
-          <table className="w-full min-w-[480px] text-sm">
+          <table className="w-full min-w-[640px] text-sm">
             <thead>
               <tr className="text-text-muted text-xs">
                 <th className="text-left font-medium pb-2">玩家</th>
+                <th className="text-right font-medium pb-2">当日投注</th>
+                <th className="text-right font-medium pb-2">当日中奖额</th>
                 <th className="text-right font-medium pb-2">当日盈亏</th>
                 <th className="text-right font-medium pb-2">累计盈亏</th>
               </tr>
@@ -457,6 +463,8 @@ function DayDetailCard({
                       {r.nickname}
                     </span>
                   </td>
+                  <td className="py-2 text-right font-display">{r.dailyBet.toFixed(1)}</td>
+                  <td className="py-2 text-right font-display text-red">{r.dailyWin.toFixed(1)}</td>
                   <td className={`py-2 text-right font-display font-semibold ${r.daily >= 0 ? "text-red" : "text-emerald-500"}`}>
                     {formatMoney(r.daily)}
                   </td>

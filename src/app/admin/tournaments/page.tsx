@@ -129,15 +129,29 @@ function isMatchPast(kickoffTime: string) {
   return new Date(kickoffTime).getTime() < getBeijingTodayStartMs();
 }
 
+function isMatchFuture(kickoffTime: string) {
+  return new Date(kickoffTime).getTime() >= getBeijingTodayStartMs() + 2 * 86400 * 1000;
+}
+
 export default function AdminTournamentsPage() {
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedTournament, setExpandedTournament] = useState<number | null>(null);
   const [expandedPast, setExpandedPast] = useState<Set<number>>(new Set());
+  const [expandedFuture, setExpandedFuture] = useState<Set<number>>(new Set());
 
   const togglePast = (tournamentId: number) => {
     setExpandedPast((prev) => {
+      const next = new Set(prev);
+      if (next.has(tournamentId)) next.delete(tournamentId);
+      else next.add(tournamentId);
+      return next;
+    });
+  };
+
+  const toggleFuture = (tournamentId: number) => {
+    setExpandedFuture((prev) => {
       const next = new Set(prev);
       if (next.has(tournamentId)) next.delete(tournamentId);
       else next.add(tournamentId);
@@ -736,8 +750,10 @@ export default function AdminTournamentsPage() {
                     ) : (
                       (() => {
                         const past = tMatches.filter((m) => isMatchPast(m.kickoffTime));
-                        const current = tMatches.filter((m) => !isMatchPast(m.kickoffTime));
+                        const future = tMatches.filter((m) => isMatchFuture(m.kickoffTime));
+                        const current = tMatches.filter((m) => !isMatchPast(m.kickoffTime) && !isMatchFuture(m.kickoffTime));
                         const isPastExpanded = expandedPast.has(t.id);
+                        const isFutureExpanded = expandedFuture.has(t.id);
                         return (
                           <div className="space-y-0 md:space-y-2">
                             {past.length > 0 && (
@@ -754,7 +770,19 @@ export default function AdminTournamentsPage() {
                             )}
                             {current.length > 0
                               ? current.map(renderMatchRow)
-                              : <div className="text-text-muted text-sm py-2">今日及之后暂无比赛</div>}
+                              : <div className="text-text-muted text-sm py-2">今日及明日暂无比赛</div>}
+                            {future.length > 0 && (
+                              <div className="space-y-0 md:space-y-2">
+                                <button
+                                  onClick={() => toggleFuture(t.id)}
+                                  className="w-full flex items-center justify-between text-left text-sm text-text-secondary hover:text-text-primary transition-colors py-2 px-3 rounded-lg bg-bg-elevated/50"
+                                >
+                                  <span>未来比赛 · {future.length} 场</span>
+                                  <span className="text-text-muted">{isFutureExpanded ? "收起 ↑" : "展开 ↓"}</span>
+                                </button>
+                                {isFutureExpanded && future.map(renderMatchRow)}
+                              </div>
+                            )}
                           </div>
                         );
                       })()

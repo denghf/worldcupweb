@@ -157,7 +157,7 @@ function buildProfitCharts(players: ChartPlayerInput[], bets: ChartBetInput[]) {
   const dates = buildDateRange(startDate, endDate);
   const dateKeySet = new Set(dates.map((d) => d.key));
 
-  const dailyByPlayer = new Map<number, Map<string, number>>();
+  const dailyByPlayer = new Map<number, Map<string, { bet: number; win: number }>>();
   for (const player of players) {
     dailyByPlayer.set(player.id, new Map());
   }
@@ -167,21 +167,28 @@ function buildProfitCharts(players: ChartPlayerInput[], bets: ChartBetInput[]) {
     const local = new Date(bet.settledAt.getTime() + 8 * 60 * 60 * 1000);
     const key = dateKeyFrom(local);
     if (!dateKeySet.has(key)) continue;
-    const profit = Number(bet.actualPayout ?? 0) - Number(bet.totalAmount ?? 0);
+    const betAmount = Number(bet.totalAmount ?? 0);
+    const winAmount = Number(bet.actualPayout ?? 0);
     const playerMap = dailyByPlayer.get(bet.userId);
     if (!playerMap) continue;
-    playerMap.set(key, (playerMap.get(key) ?? 0) + profit);
+    const prev = playerMap.get(key) ?? { bet: 0, win: 0 };
+    playerMap.set(key, { bet: prev.bet + betAmount, win: prev.win + winAmount });
   }
 
   const playersPayload = players.map((player) => {
     const dailyMap = dailyByPlayer.get(player.id)!;
     let running = 0;
     const points = dates.map((d) => {
-      const dailyProfit = roundMoney(dailyMap.get(d.key) ?? 0);
+      const entry = dailyMap.get(d.key);
+      const dailyBet = roundMoney(entry?.bet ?? 0);
+      const dailyWin = roundMoney(entry?.win ?? 0);
+      const dailyProfit = roundMoney((entry?.win ?? 0) - (entry?.bet ?? 0));
       running += dailyProfit;
       return {
         date: d.key,
         label: d.label,
+        dailyBet,
+        dailyWin,
         dailyProfit,
         cumulativeProfit: roundMoney(running),
       };
