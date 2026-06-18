@@ -55,6 +55,7 @@ function canonicalTeamName(name) {
 
   const aliases = {
     "刚果（金）": "刚果（金）",
+    民主刚果: "刚果（金）",
     沙特阿拉伯: "沙特",
     乌兹别克: "乌兹别克斯坦",
   };

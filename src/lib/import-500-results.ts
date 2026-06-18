@@ -12,6 +12,7 @@ const TEAM_ALIASES: Record<string, string> = {
   "沙特": "沙特阿拉伯",
   "乌兹别克": "乌兹别克斯坦",
   "刚果(金)": "刚果（金）",
+  "民主刚果": "刚果（金）",
 };
 
 interface ParsedResult {
