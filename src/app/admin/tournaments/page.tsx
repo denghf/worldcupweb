@@ -511,6 +511,25 @@ export default function AdminTournamentsPage() {
     }
   };
 
+  const handleDeleteMatch = async (match: Match) => {
+    if (!confirm(`确认删除「${displayTeamName(match.homeTeam)} vs ${displayTeamName(match.awayTeam)}」？相关赔率也会一并删除。`)) return;
+    try {
+      const res = await fetch("/api/admin/matches", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ matchId: match.id }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        loadData();
+      } else {
+        alert(data.error || "删除失败");
+      }
+    } catch {
+      alert("网络错误");
+    }
+  };
+
   const renderMatchRow = (m: Match) => {
     const kickoff = new Date(m.kickoffTime);
     const timeStr = kickoff.toLocaleString("zh-CN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
@@ -561,6 +580,14 @@ export default function AdminTournamentsPage() {
             >
               {isFinished ? "查看" : "结算"}
             </button>
+            {!hasStarted && !isFinished && (
+              <button
+                onClick={() => handleDeleteMatch(m)}
+                className="text-xs px-2 py-1 rounded-md text-red hover:bg-red/10 transition-colors"
+              >
+                删除
+              </button>
+            )}
           </div>
         </div>
 
@@ -613,6 +640,14 @@ export default function AdminTournamentsPage() {
           >
             {isFinished ? "修改结算" : "结算"}
           </button>
+          {!hasStarted && !isFinished && (
+            <button
+              onClick={() => handleDeleteMatch(m)}
+              className="text-sm px-2 py-1 rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors"
+            >
+              删除
+            </button>
+          )}
         </div>
       </div>
     );
