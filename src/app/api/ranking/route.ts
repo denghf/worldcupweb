@@ -7,7 +7,10 @@ function roundMoney(value: number) {
 
 export async function GET() {
   const settledBets = await prisma.bet.findMany({
-    where: { status: { in: ["WON", "LOST"] } },
+    where: {
+      status: { in: ["WON", "LOST"] },
+      user: { status: "ACTIVE" },
+    },
     select: {
       userId: true,
       status: true,

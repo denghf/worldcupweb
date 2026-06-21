@@ -54,7 +54,7 @@ export const GET = withAdmin(async () => {
     prisma.bet.count({ where: { status: "WON" } }),
     prisma.bet.count({ where: { status: "LOST" } }),
     prisma.userStats.findMany({
-      where: { totalBets: { gt: 0 } },
+      where: { totalBets: { gt: 0 }, user: { status: "ACTIVE" } },
       include: { user: { select: { nickname: true } } },
       orderBy: { netProfit: "desc" },
     }),
